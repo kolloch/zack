@@ -2,6 +2,10 @@
 resolver = "2"
 members = ["cli", "loader", "rules", "store"]
 
+[workspace.package]
+edition = "2024"
+rust-version = "1.85.0"
+
 [workspace.dependencies]
 starlark = { version = "0.13.0", features = [] }
 
