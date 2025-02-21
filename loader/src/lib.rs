@@ -1,11 +1,12 @@
 use anyhow::Context;
 use dupe::{Dupe, OptionDupedExt};
-use starlark::environment::{FrozenModule, Globals, Module};
+use starlark::environment::{FrozenModule, Globals, LibraryExtension, Module};
 use starlark::eval::{Evaluator, FileLoader};
 use starlark::syntax::{AstModule, Dialect, DialectTypes};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use thiserror::Error;
+use tracing::debug;
 
 #[derive(Error, Debug)]
 #[non_exhaustive]
@@ -23,7 +24,7 @@ pub struct Loader {
 impl Default for Loader {
     fn default() -> Self {
         Loader {
-            globals: Globals::standard(),
+            globals: Globals::extended_by(LIBRARY_EXTENSIONS),
             loaded: Default::default(),
         }
     }
@@ -38,6 +39,26 @@ const DIALECT: Dialect = Dialect {
     ..Dialect::Standard
 };
 
+const LIBRARY_EXTENSIONS: &[LibraryExtension] = &[
+    // LibraryExtension::Breakpoint,
+    LibraryExtension::Debug,
+    LibraryExtension::CallStack,
+    LibraryExtension::EnumType,
+    LibraryExtension::Filter,
+    LibraryExtension::Json,
+    LibraryExtension::Map,
+    LibraryExtension::NamespaceType,
+    LibraryExtension::Partial,
+    LibraryExtension::Pprint,
+    LibraryExtension::Prepr,
+    LibraryExtension::Print,
+    LibraryExtension::Pstr,
+    LibraryExtension::RecordType,
+    LibraryExtension::SetType,
+    LibraryExtension::StructType,
+    LibraryExtension::Typing,
+];
+
 impl FileLoader for Loader {
     fn load(&self, module_name: &str) -> Result<FrozenModule, starlark::Error> {
         let loaded = self.loaded.read().expect("to get lock");
@@ -47,11 +68,13 @@ impl FileLoader for Loader {
         drop(loaded);
 
         let file_name = store::rules_dir().join(module_name);
+        debug!("Loading module {module_name:?} from {file_name:?}");
         let content = std::fs::read_to_string(file_name.as_str())
             .with_context(|| format!("while reading from {file_name:?}"))?;
         let parsed = AstModule::parse(file_name.as_str(), content, &DIALECT)?;
         let module = Module::new();
         let mut eval = Evaluator::new(&module);
+        eval.set_loader(self);
         eval.eval_module(parsed, &self.globals)?;
         drop(eval);
         let frozen = module.freeze().map_err(starlark::Error::from)?;

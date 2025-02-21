@@ -29,6 +29,9 @@ dupe = "0.9.1"
 quote = "1.0.38"
 tempfile = "3.17.1"
 
+tracing = { version = "0.1.41", features = ["log"] }
+tracing-subscriber = "0.3.19"
+
 # cli
 bpaf = "0.9.16"
 

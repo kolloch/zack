@@ -3,4 +3,5 @@ Some core functions.
 """
 
 def hi():
-    pass
+    pprint(dir(""))
+    pprint("Hi!")

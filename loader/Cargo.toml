@@ -10,5 +10,6 @@ thiserror = { workspace = true }
 anyhow = { workspace = true }
 dupe = { workspace = true }
 camino = { workspace = true }
+tracing = { workspace = true }
 
 store = { path = "../store" }

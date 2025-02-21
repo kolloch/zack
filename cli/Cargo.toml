@@ -11,5 +11,9 @@ path = "src/main.rs"
 anyhow = { workspace = true }
 starlark = { workspace = true }
 
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+
 rules = { path = "../rules" }
 loader = { path = "../loader" }

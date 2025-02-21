@@ -86,8 +86,7 @@ fn detect_workspace() -> Result<PathBuf, Error> {
             None => {
                 return Err(Error::WorkspaceRootNotFound {
                     exe: std::env::current_exe()?,
-                    current_dir: Utf8PathBuf::from_path_buf(current_dir)
-                        .map_err(Error::NoUtf8)?,
+                    current_dir: Utf8PathBuf::from_path_buf(current_dir).map_err(Error::NoUtf8)?,
                 });
             } // Reached root directory
         }

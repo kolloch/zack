@@ -12,6 +12,7 @@ camino = { workspace = true }
 
 dupe = { workspace = true }
 anyhow = { workspace = true }
+tracing = { workspace = true }
 
 loader = { path = "../loader" }
 store = { path = "../store" }
