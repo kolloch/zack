@@ -97,6 +97,7 @@ fn detect_workspace() -> Result<PathBuf, Error> {
 mod tests {
     use super::*;
     use std::fs::File;
+    use std::fs;
     use tempfile::TempDir;
 
     #[test]
@@ -126,6 +127,7 @@ mod tests {
         let detected = detect_workspace();
         if let Err(Error::WorkspaceRootNotFound {
             current_dir: reported_current_dir,
+            ..
         }) = detected
         {
             assert_eq!(current_dir, reported_current_dir);

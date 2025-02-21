@@ -25,5 +25,7 @@ jobs:
 
       - run: |
           cargo check
+          cargo check --test
           cargo test
           cargo clippy
+          cargo clippy --test
