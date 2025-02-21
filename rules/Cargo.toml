@@ -1,0 +1,16 @@
+[package]
+name = "rules"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+include_dir = {  workspace = true }
+starlark = { workspace = true }
+
+ahash = { workspace = true }
+camino = { workspace = true }
+
+dupe = { workspace = true }
+anyhow = { workspace = true }
+
+loader = { path = "../loader" }
