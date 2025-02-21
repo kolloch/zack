@@ -1,0 +1,29 @@
+name: standard
+
+on: [push, pull_request]
+
+jobs:
+  standard:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    name: Test `cargo check/test/build` on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    env:
+      CARGO_TERM_COLOR: always
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: rustup toolchain install stable --profile minimal --no-self-update
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.7.7
+
+      - run: |
+          cargo check
+          cargo test
+          cargo build --release
