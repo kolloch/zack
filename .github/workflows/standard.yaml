@@ -26,4 +26,4 @@ jobs:
       - run: |
           cargo check
           cargo test
-          cargo build --release
+          cargo clippy
