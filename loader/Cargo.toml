@@ -8,3 +8,7 @@ starlark = { workspace = true }
 
 thiserror = { workspace = true }
 anyhow = { workspace = true }
+dupe = { workspace = true }
+camino = { workspace = true }
+
+store = { path = "../store" }

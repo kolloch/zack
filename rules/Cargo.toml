@@ -14,3 +14,4 @@ dupe = { workspace = true }
 anyhow = { workspace = true }
 
 loader = { path = "../loader" }
+store = { path = "../store" }

@@ -1,4 +1,4 @@
-use std::fs;
+use camino::{Utf8Path, Utf8PathBuf};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use thiserror::Error;
@@ -6,8 +6,18 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 #[non_exhaustive]
 pub enum Error {
-    #[error("No ZACK_WORKSPACE.star file found in any parent directory of '{current_dir:?}'.")]
-    WorkspaceRootNotFound { current_dir: PathBuf },
+    #[error(
+        "No ZACK_WORKSPACE.star file found in any parent directory of '{current_dir:?}'.\n\
+         Create one in this directory with:\n\
+         \n\
+         \t{exe} init"
+    )]
+    WorkspaceRootNotFound {
+        exe: PathBuf,
+        current_dir: Utf8PathBuf,
+    },
+    #[error("Not an UTF-8 compatible path: {0}")]
+    NoUtf8(PathBuf),
     #[error("Unexpected IO error: {err:?}")]
     Io {
         #[from]
@@ -15,30 +25,38 @@ pub enum Error {
     },
 }
 
-pub fn workspace_dir() -> &'static Path {
+pub fn workspace_dir() -> &'static Utf8Path {
     paths().workspace.as_path()
 }
 
-pub fn target_dir() -> &'static Path {
+pub fn target_dir() -> &'static Utf8Path {
     paths().target.as_path()
 }
 
-pub fn rules_dir() -> &'static Path {
+pub fn rules_dir() -> &'static Utf8Path {
     paths().rules.as_path()
 }
 
 #[derive(Debug)]
 struct WorkspacePaths {
-    workspace: PathBuf,
-    target: PathBuf,
-    rules: PathBuf,
+    workspace: Utf8PathBuf,
+    target: Utf8PathBuf,
+    rules: Utf8PathBuf,
 }
 
 fn paths() -> &'static WorkspacePaths {
     static WORKSPACE_ROOT: OnceLock<WorkspacePaths> = OnceLock::new();
 
     WORKSPACE_ROOT.get_or_init(|| {
-        let root = detect_workspace().expect("while detecting workspace root");
+        let root = detect_workspace();
+        if let Err(err) = root {
+            eprintln!("{}", err);
+            std::process::exit(1);
+        }
+        let root = Utf8PathBuf::from_path_buf(root.unwrap())
+            .map_err(Error::NoUtf8)
+            .unwrap();
+
         let target = root.join("target");
         let rules = target.join("rules");
         WorkspacePaths {
@@ -65,7 +83,13 @@ fn detect_workspace() -> Result<PathBuf, Error> {
         // Try to move up to parent directory
         match current_path.parent() {
             Some(parent) => current_path = parent,
-            None => return Err(Error::WorkspaceRootNotFound { current_dir }), // Reached root directory
+            None => {
+                return Err(Error::WorkspaceRootNotFound {
+                    exe: std::env::current_exe()?,
+                    current_dir: Utf8PathBuf::from_path_buf(current_dir)
+                        .map_err(Error::NoUtf8)?,
+                });
+            } // Reached root directory
         }
     }
 }
