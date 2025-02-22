@@ -6,17 +6,17 @@ import starlight from '@astrojs/starlight';
 export default defineConfig({
 	integrations: [
 		starlight({
-			title: 'My Docs',
+			title: 'Zack',
+			logo: {
+				src: "./public/favicon.svg"
+			},
 			social: {
-				github: 'https://github.com/withastro/starlight',
+				github: 'https://github.com/kolloch/zack',
 			},
 			sidebar: [
 				{
-					label: 'Guides',
-					items: [
-						// Each item here is one entry in the navigation menu.
-						{ label: 'Example Guide', slug: 'guides/example' },
-					],
+					label: 'Ideas',
+					autogenerate: { directory: 'ideas' },
 				},
 				{
 					label: 'Reference',
