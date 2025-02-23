@@ -1,4 +1,4 @@
-name: standard
+name: rust build
 
 on: [push, pull_request]
 
