@@ -8,7 +8,10 @@ export default defineConfig({
 	base: 'zack',
 	integrations: [
 		starlight({
-			title: 'Zack',
+			title: 'Zack Build',
+			editLink: {
+				baseUrl: 'https://github.com/kolloch/zack/edit/main/docs/',
+			},
 			logo: {
 				src: "./public/favicon.svg"
 			},
