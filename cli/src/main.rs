@@ -1,8 +1,9 @@
-use anyhow::Result;
-use loader::Loader;
+use anyhow::{Context, Result};
+use loader::{Executor, Loader};
 use starlark::environment::GlobalsBuilder;
-use starlark::eval::FileLoader;
 use starlark::starlark_module;
+use std::fs::read_to_string;
+use store::workspace_dir;
 
 #[starlark_module]
 fn starlark_quadratic(builder: &mut GlobalsBuilder) {
@@ -20,11 +21,17 @@ fn main() -> Result<()> {
     rules::copy_built_in_rules()?;
 
     let loader = Loader::default();
+    let executor = Executor::default();
 
-    let core = loader
-        .load("@core/other.star")
-        .map_err(starlark::Error::into_anyhow)?;
-    println!("{:?}", core.documentation().docs);
+    let file_path = workspace_dir().join("ZACK.star");
+    executor
+        .execute(
+            &loader,
+            &file_path,
+            read_to_string(&file_path).with_context(|| format!("while reading {file_path:?}"))?,
+        )
+        .map_err(|e| e.into_anyhow())
+        .with_context(|| format!("while executing {file_path:?}"))?;
 
     Ok(())
 }
