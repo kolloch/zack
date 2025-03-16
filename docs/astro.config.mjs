@@ -20,12 +20,23 @@ export default defineConfig({
 			},
 			sidebar: [
 				{
-					label: 'Ideas',
-					autogenerate: { directory: 'ideas' },
+					label: 'About Zack',
+					autogenerate: { directory: '00_zack' },
 				},
 				{
-					label: 'Reference',
-					autogenerate: { directory: 'reference' },
+					label: 'Concepts',
+					collapsed: true,
+					autogenerate: { directory: 'concepts' },
+				},
+				{
+					label: 'Low-level Components',
+					collapsed: true,
+					autogenerate: { directory: 'components' },
+				},
+				{
+					label: 'Other Build Systems',
+					collapsed: true,
+					autogenerate: { directory: 'other_build_systems' },
 				},
 			],
 		}),

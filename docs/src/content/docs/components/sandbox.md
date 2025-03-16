@@ -10,9 +10,15 @@ to the build system.
 ## Existing Tools
 
 - The Bazel Sandbox (not well documented)
-- Docker (slow startup)
+- Docker: Very common. Startup of individual containers relatively slow, so probably not suited
+  for many small isolated actions.
 
-Not investigated yet:
+### Not triaged yet
 
 - [jailtime](https://github.com/cblichmann/jailtime) Linux / Mac OS
 - [jailkit](https://olivier.sessink.nl/jailkit/) Linux / Mac OS
+
+### Probably too restrictive
+
+- [goal](https://github.com/servo/gaol)
+- [rusty-sandbox](https://crates.io/crates/rusty-sandbox): We'd need to allow more IO.

@@ -3,6 +3,10 @@ title: Zack's Goals
 description: Zack's high-level goals.
 ---
 
+:::note 
+Zack is a collection of vague and still incoherent ideas at this point.
+:::
+
 - *Speedy Builds*: Achieve fast build times by caching and parallelizing build actions.
 - *Monorepo Support*: Provide cross-language and toolchain compatibility for monorepo projects.
 - *Build Tool Integration*: Integrate with popular language-specific build tools (like Cargo, pnpm, Go) while:
