@@ -25,6 +25,11 @@ description: An incomplete list of build systems to get inspired from.
 
 [Buck2](https://buck2.build/)
 
+Bonanza:
+
+- [GitHub](https://github.com/buildbarn/bonanza)
+- [Slide Deck](https://docs.google.com/presentation/d/1uh6CxvvziQunw55e_bs1Juz3jfaiE-QJVs2DCfeMeTw/edit?usp=sharing)
+
 ## Low level
 
 [Ninja Build](https://ninja-build.org/)
