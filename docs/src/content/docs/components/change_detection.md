@@ -5,6 +5,8 @@ description: Detect modified files to invalidate build actions.
 
 Potentially integrate with file system magic?
 
+Also see [source vfs](/zack/concepts/source_vfs/).
+
 Research:
 
 - https://facebook.github.io/watchman/
