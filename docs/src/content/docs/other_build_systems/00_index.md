@@ -21,7 +21,7 @@ description: An incomplete list of build systems to get inspired from.
 
 ### Starlark-based
 
-[Bazel](https://bazel.build/), see our [Bazel Notes](../bazel_terminology)
+[Bazel](https://bazel.build/), see our [Bazel Notes](/zack/other_build_systems/bazel_terminology)
 
 [Buck2](https://buck2.build/)
 

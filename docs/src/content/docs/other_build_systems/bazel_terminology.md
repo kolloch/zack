@@ -109,8 +109,8 @@ up with our own terminology. Obviously, this is a small excerpt.
 
 High-level declaration of a build goal such as a library, a binary, a docker image.
 
-A target has a [Label](#Label) and is created within a `BUILD.bazel` file by
-instantiating a [Rule](#Rule). 
+A target has a [Label](#label) and is created within a `BUILD.bazel` file by
+instantiating a [Rule](#rule). 
 
 [Target Bazel Docs](https://bazel.build/reference/glossary#target).
 
@@ -120,7 +120,7 @@ A rule defines the attributes that are available for defining a target of a cert
 (e.g. a C++ library or Golang executable).
 
 It also specifies a rule implementation that is used to expand the declarative rule
-into [Actions](#Action).
+into [Actions](#action).
 
 [Rule Bazel Docs](https://bazel.build/reference/glossary#rule)
 
@@ -133,7 +133,7 @@ and the expected output `hello.o`.
 
 ### Provider
 
-A [rule](#Rule) implementation typically has to consume information from other rules, e.g.:
+A [rule](#rule) implementation typically has to consume information from other rules, e.g.:
 
 - the paths of required inputs which might have been produced by another rule,
 - the names of libraries to link to the final binary,
@@ -153,7 +153,7 @@ Rule implementations often allow customizability of the actions they execute
 through config settings and toolchains.
 
 Toolchains selection typically depends on platform constraints and settings
-specified for a build [configuration](#Configuration).
+specified for a build [configuration](#configuration).
 
 ### Configuration
 

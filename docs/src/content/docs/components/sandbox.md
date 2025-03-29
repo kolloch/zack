@@ -7,6 +7,10 @@ For enforcing hermetic execution of build steps, Zack needs sandboxing technolog
 The immediate goal is to prevent accidental sources of non-determinism such as inputs unknown
 to the build system.
 
+The implementation will most likely overlap with
+[Execution VFS](/zack/components/execution_vfs/) and 
+[Execution Instrumentation](/zack/components/execution_instrumentation/).
+
 ## Existing Tools
 
 - The Bazel Sandbox (not well documented)
