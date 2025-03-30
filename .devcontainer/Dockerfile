@@ -5,14 +5,17 @@ FROM base AS builder
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
     autoconf automake autotools-dev  \
+    b3sum \
     bsdutils \
-    build-essential  \
+    build-essential \
+    bzip2 \
     ca-certificates \
     cmake \
     make \
     coreutils \
     curl  \
     file \
+    gzip \
     gcc \
     g++ \
     git \
@@ -22,6 +25,7 @@ RUN apt-get update && \
     locales \
     patch \
     qtbase5-dev libqt5sql5-sqlite \
+    tar \
     uuid-dev libcap-dev uuid-runtime \
     util-linux  \
     wget \
@@ -32,10 +36,13 @@ RUN locale-gen en_US.UTF-8
 
 FROM builder AS shournal
 
-USER ubuntu
+ADD --link https://github.com/kolloch/shournal/archive/refs/heads/pagesize.tar.gz /workspace.tar.gz
+RUN mkdir -p /workspace
+RUN tar -xzf /workspace.tar.gz --strip-components=1 -C /workspace
+RUN chown -R ubuntu /workspace
 
-ADD "https://github.com/kolloch/shournal.git#4951b59f88a9f58b3dff72469ffcf1289219c713" /workspace
-VOLUME /workspace/build
+USER ubuntu
+RUN mkdir -p /workspace/build
 WORKDIR /workspace/build
 RUN cmake -DSHOURNAL_EDITION=docker ..
 RUN make
