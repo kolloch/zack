@@ -33,5 +33,3 @@ descriptors, memory addresses, host names, ...
 - [UTM](https://github.com/utmapp/UTM) for Virtual Machines on MacOS
 - [CRIU](https://criu.org/Main_Page)
 - [CRIU with Docker](https://www.redhat.com/en/blog/container-live-migration-using-runc-and-criu)
-- 
-- 
