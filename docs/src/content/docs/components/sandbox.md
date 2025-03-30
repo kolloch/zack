@@ -26,3 +26,8 @@ The implementation will most likely overlap with
 
 - [goal](https://github.com/servo/gaol)
 - [rusty-sandbox](https://crates.io/crates/rusty-sandbox): We'd need to allow more IO.
+
+### How do others do it?
+
+The sandbox in [Dune](https://dune.readthedocs.io/en/stable/concepts/sandboxing.html) sounds very
+pragmatic.
