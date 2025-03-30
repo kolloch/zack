@@ -4,9 +4,9 @@
   "name": "zack",
   // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
   "build": {
-    dockerfile: "Dockerfile"
+    "dockerfile": "Dockerfile"
   },
-  privileged: true,
+  "privileged": true,
   // Use 'mounts' to make the cargo cache persistent in a Docker Volume.
   "mounts": [
     "source=${localWorkspaceFolderBasename}-bashhistory,target=/commandhistory,type=volume",
