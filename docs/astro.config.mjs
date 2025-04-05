@@ -9,6 +9,11 @@ import markdoc from '@astrojs/markdoc';
 export default defineConfig({
     site: 'https://kolloch.github.io',
     base: 'zack',
+    i18n: {
+        routing: {
+            redirectToDefaultLocale: undefined,
+        }
+    },
     integrations: [starlight({
         plugins: [starlightLinksValidator()],
         title: 'Zack Build',
