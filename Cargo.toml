@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["cli", "db", "loader", "rules", "store"]
+members = ["cli", "db", "loader", "rules", "directories"]
 
 [workspace.package]
 edition = "2024"
