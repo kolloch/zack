@@ -67,3 +67,8 @@ a library to start the infrastructure dependencies as part of the tests.
 That is not ideal and we can do better. But it would be great if we somehow integrated these
 libraries with our infrastructure dependencies more deeply, so infra dependencies
 can be pooled and shared.
+
+## Related
+
+[ninja pool](https://ninja-build.org/manual.html#ref_pool) allows to limit parallelism for
+certain resources but providing these resources is outside of the scope of Ninja.

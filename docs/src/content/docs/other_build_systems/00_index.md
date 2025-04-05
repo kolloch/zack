@@ -51,6 +51,10 @@ becoming [dune](https://dune.build/).
 
 [GNU Make](https://www.gnu.org/software/make/)
 
+## Educational
+
+[ninja-rs](https://github.com/nikhilm/ninja-rs)
+
 ## Papers / Blog Articles
 
 [Build Systems à la Carte](https://www.microsoft.com/en-us/research/wp-content/uploads/2018/03/build-systems.pdf)
