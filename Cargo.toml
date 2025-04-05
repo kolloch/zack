@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["cli", "loader", "rules", "store"]
+members = ["cli", "db", "loader", "rules", "store"]
 
 [workspace.package]
 edition = "2024"
@@ -38,6 +38,9 @@ tracing-subscriber = "0.3.19"
 
 # cli
 bpaf = "0.9.16"
+
+# db
+diesel = { version = "2.2.8", features = ["sqlite"] }
 
 # dev
 prop-test = "0.1.1"

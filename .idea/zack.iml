@@ -7,6 +7,7 @@
       <sourceFolder url="file://$MODULE_DIR$/loader/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/rules/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/store/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/db/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/cli/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
