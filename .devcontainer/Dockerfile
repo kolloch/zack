@@ -74,6 +74,17 @@ USER ubuntu
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | \
     bash
 
+FROM builder AS build-root
+
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+          debootstrap && \
+            rm -rf /var/lib/apt/lists/*
+
+RUN debootstrap --variant=minbase  --include=build-essential,git,curl noble /build-root && \
+    rm -rf /build-root/var/cache && \
+    mkdir /build-root/var/cache
+
 FROM builder
 
 RUN yes | unminimize
@@ -137,5 +148,7 @@ USER root
 RUN mkdir /usr/local/share/ca-certificates/extra
 RUN openssl x509 -in /home/ubuntu/.mitmproxy/mitmproxy-ca.pem -inform PEM -out /usr/local/share/ca-certificates/extra/mitmproxy-ca.crt
 RUN update-ca-certificates
-USER ubuntu
 
+COPY --link --from=build-root /build-root /build-root
+
+USER ubuntu
