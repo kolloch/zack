@@ -3,7 +3,7 @@ use loader::{Executor, Loader};
 use starlark::environment::GlobalsBuilder;
 use starlark::starlark_module;
 use std::fs::read_to_string;
-use store::workspace_dir;
+use directories::workspace_dir;
 
 #[starlark_module]
 fn starlark_quadratic(builder: &mut GlobalsBuilder) {

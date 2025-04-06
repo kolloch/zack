@@ -14,6 +14,6 @@ starlark = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
-store = { path = "../directories" }
+directories = { path = "../directories" }
 rules = { path = "../rules" }
 loader = { path = "../loader" }

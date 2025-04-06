@@ -112,6 +112,8 @@ RUN apt-get update && \
     ripgrep \
     tmux \
     less \
+    ltrace \
+    strace \
     sudo \
     vim && \
     rm -rf /var/lib/apt/lists/*

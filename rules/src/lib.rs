@@ -1,9 +1,9 @@
 use anyhow::Context;
 use camino::Utf8Path;
+use directories::rules_dir;
 use include_dir::{Dir, include_dir};
 use std::fs::File;
 use std::io::Write;
-use store::rules_dir;
 use tracing::debug;
 
 static STARLARK: Dir = include_dir!("$CARGO_MANIFEST_DIR/starlark");
@@ -19,7 +19,7 @@ pub fn copy_built_in_rules() -> anyhow::Result<()> {
 
     debug!("Copying internal rules to {:?}.", rules_dir());
     for file in STARLARK.files() {
-        let path = store::rules_dir().join(Utf8Path::from_path(file.path()).unwrap());
+        let path = directories::rules_dir().join(Utf8Path::from_path(file.path()).unwrap());
         std::fs::create_dir_all(path.parent().unwrap())
             .context("while creating parent directories")?;
         let mut fs_file = File::create(&path)?;
@@ -32,6 +32,6 @@ pub fn copy_built_in_rules() -> anyhow::Result<()> {
     }
 
     STARLARK
-        .extract(store::rules_dir())
+        .extract(directories::rules_dir())
         .context("while copying built-in rules")
 }

@@ -37,11 +37,16 @@ pub fn rules_dir() -> &'static Utf8Path {
     paths().rules.as_path()
 }
 
+pub fn out_dir() -> &'static Utf8Path {
+    paths().out.as_path()
+}
+
 #[derive(Debug)]
 struct WorkspacePaths {
     workspace: Utf8PathBuf,
     target: Utf8PathBuf,
     rules: Utf8PathBuf,
+    out: Utf8PathBuf,
 }
 
 fn paths() -> &'static WorkspacePaths {
@@ -57,12 +62,14 @@ fn paths() -> &'static WorkspacePaths {
             .map_err(Error::NoUtf8)
             .unwrap();
 
-        let target = root.join("target");
+        let target = root.join("target").join("zack");
         let rules = target.join("rules");
+        let out = target.join("out");
         WorkspacePaths {
             workspace: root,
             target,
             rules,
+            out,
         }
     })
 }

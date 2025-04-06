@@ -7,6 +7,15 @@
     "dockerfile": "Dockerfile"
   },
   "privileged": true,
+  "capAdd": [
+    "SYS_ADMIN",
+    "SYS_PTRACE",
+    "SYS_MODULE",
+    "SYS_NICE",
+    "SYS_RESOURCE",
+    "SYS_TIME"
+  ],
+  "runArgs": [ "--security-opt", "seccomp=unconfined" ],
   // Use 'mounts' to make the cargo cache persistent in a Docker Volume.
   "mounts": [
     "source=${localWorkspaceFolderBasename}-bashhistory,target=/commandhistory,type=volume",
@@ -29,13 +38,13 @@
     "jetbrains": {
       "plugins" : [
         "org.jetbrains.plugins.astro",
-        "com.jetbrains.rust",
+        "com.jetbrains.rust"
       ],
       "settings": {
         "com.intellij:app:EditorSettings.soft_wrap_file_masks": "*.md; *.txt; *.rst; *.adoc",
         "com.intellij:app:EditorSettings.is_ensure_newline_at_eof": true,
         "com.intellij:app:EditorSettings.remove_trailing_blank_lines": true,
-        "com.intellij:app:GeneralSettings.autoSaveIfInactive": true,
+        "com.intellij:app:GeneralSettings.autoSaveIfInactive": true
       },
       "backend": "IntelliJ"
     }

@@ -10,4 +10,4 @@ camino = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 
-store = { path = "../directories" }
+directories = { path = "../directories" }

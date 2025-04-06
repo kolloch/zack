@@ -6,8 +6,10 @@
       <sourceFolder url="file://$MODULE_DIR$/cli/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/loader/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/rules/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/store/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/db/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/directories/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/exec/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/outputs/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/cli/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>

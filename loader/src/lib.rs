@@ -90,7 +90,7 @@ impl FileLoader for Loader {
         }
         drop(loaded);
 
-        let file_path = store::rules_dir().join(module_name);
+        let file_path = directories::rules_dir().join(module_name);
         debug!("Loading module {module_name:?} from {file_path:?}");
         let content = std::fs::read_to_string(file_path.as_str())
             .with_context(|| format!("while reading from {file_path:?}"))?;
