@@ -175,7 +175,8 @@ impl crate::Exec {
             None,
         )?;
 
-        eprintln!("pivot_root: {} -> {}", root_dir, old_root);
+        writeln!(stderr, "pivot_root: {} -> {}", root_dir, old_root);
+        let _ = stderr.flush();
         nix::unistd::pivot_root(root_dir.as_std_path(), old_root.as_std_path())
             .expect("pivot_root failed");
 
