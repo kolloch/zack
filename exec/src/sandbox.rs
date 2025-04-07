@@ -10,6 +10,7 @@ use nix::unistd::execvp;
 use std::convert::Infallible;
 use std::ffi::{CStr, CString, NulError};
 use std::fs::{self, File};
+use std::os::fd::FromRawFd;
 use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Child, Command};
@@ -30,7 +31,7 @@ impl crate::Exec {
                 Box::new(|| {
                     use std::os::fd::FromRawFd;
                     // Using println was problematic...
-                    let mut stderr = unsafe { File::from_raw_fd(2) };
+                    let mut stderr: File = unsafe { File::from_raw_fd(2) };
                     writeln!(stderr, "sandbox.rs: child process");
                     let _ = stderr.flush();
                     match self.run_child(root_dir) {
@@ -106,15 +107,19 @@ impl crate::Exec {
         let pid = std::process::id();
 
         Self::unshare(CloneFlags::CLONE_NEWUSER)?;
+        let mut stderr: File = unsafe { File::from_raw_fd(2) };
+
         if let Err(err) = fs::write("/proc/self/uid_map", "0 1000 1") {
-            warn!("while writing to /proc/self/uid_map: {err:#}");
+            writeln!(stderr, "while writing to /proc/self/uid_map: {err:#}");
         }
         if let Err(err) = fs::write("/proc/self/setgroups", "deny") {
-            warn!("while writing to /proc/self/setgroups: {err:#}");
+            writeln!(stderr, "while writing to /proc/self/setgroups: {err:#}");
         }
         if let Err(err) = fs::write("/proc/self/gid_map", "0 1000 1") {
-            warn!("while writing to /proc/self/gid_map: {err:#}")
+            writeln!(stderr, "while writing to /proc/self/gid_map: {err:#}");
         }
+
+        let _ = stderr.flush();
 
         Self::unshare(CloneFlags::CLONE_NEWNS)?;
 
