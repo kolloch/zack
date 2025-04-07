@@ -165,8 +165,8 @@ impl crate::Exec {
 
         std::env::set_current_dir(root_dir)?;
 
-        chdir(root_dir.as_std_path())
-            .map_err(|e| crate::ExecError::SandboxChdir(root_dir.into(), e))?;
+        writeln!(stderr, "proc mount");
+        let _ = stderr.flush();
 
         // bind mount proc
         Self::mount(
