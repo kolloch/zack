@@ -121,7 +121,15 @@ impl crate::Exec {
 
         let _ = stderr.flush();
 
+
+        writeln!(stderr, "unshare");
+        let _ = stderr.flush();
+
         Self::unshare(CloneFlags::CLONE_NEWNS)?;
+
+
+        writeln!(stderr, "bind mount none");
+        let _ = stderr.flush();
 
         // === 2. Make mounts private ===
         Self::mount(
@@ -141,6 +149,9 @@ impl crate::Exec {
         //     None::<&str>,
         // )
         //     .expect("mount --bind failed");
+
+        writeln!(stderr, "overlay mount");
+        let _ = stderr.flush();
 
         // Use an overlay filesystem instead of bind mount, with /build-root as the lowerdir
         // and the new root as the upperdir
