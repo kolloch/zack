@@ -9,12 +9,12 @@ use nix::unistd::chdir;
 use nix::unistd::execvp;
 use std::convert::Infallible;
 use std::ffi::{CStr, CString, NulError};
-use std::fs;
+use std::fs::{self, File};
 use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Child, Command};
 use tracing::{error, warn};
-
+use std::io::Write;
 
 impl crate::Exec {
     fn run(&self, root_dir: &Utf8Path) -> crate::Result<i32> {
@@ -22,18 +22,35 @@ impl crate::Exec {
         const STACK_SIZE: usize = 1024 * 1024;
         let mut stack: Vec<u8> = vec![0; STACK_SIZE];
 
+        println!("sandbox.rs: parent process");
+
         let child = unsafe {
             // FIXME: Use clone3
             clone(
-                Box::new(|| match self.run_child(root_dir) {
-                    Err(err) => {
-                        eprintln!("sandbox.rs: error while trying to run sandboxed child: {err:#}");
-                        127
+                Box::new(|| {
+                    use std::os::fd::FromRawFd;
+                    // Using println was problematic...
+                    let mut stderr = unsafe { File::from_raw_fd(2) };
+                    writeln!(stderr, "sandbox.rs: child process");
+                    let _ = stderr.flush();
+                    match self.run_child(root_dir) {
+                        Err(err) => {
+                            writeln!(
+                                stderr,
+                                "sandbox.rs: error while trying to run sandboxed child: {err:#}"
+                            );
+                            let _ = stderr.flush().unwrap();
+                            127
+                        }
+                        Ok(_) => {
+                            writeln!(stderr, "sandbox.rs: child process exited before exec");
+                            let _ = stderr.flush().unwrap();
+                            123
+                        }
                     }
-                    Ok(_) => 0,
                 }),
                 &mut stack,
-                CloneFlags::empty(),
+                CloneFlags::CLONE_FILES,
                 Some(libc::SIGCHLD),
             )
             .map_err(crate::ExecError::SandboxClone)?
