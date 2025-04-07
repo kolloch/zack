@@ -163,6 +163,8 @@ impl crate::Exec {
         let old_root = root_dir.join("old_root");
         fs::create_dir_all(&old_root)?;
 
+        std::env::set_current_dir(root_dir)?;
+
         chdir(root_dir.as_std_path())
             .map_err(|e| crate::ExecError::SandboxChdir(root_dir.into(), e))?;
 
@@ -178,14 +180,14 @@ impl crate::Exec {
         writeln!(stderr, "pivot_root: {} -> {}", root_dir, old_root);
         let _ = stderr.flush();
         nix::unistd::pivot_root(root_dir.as_std_path(), old_root.as_std_path())
-            .expect("pivot_root failed");
+            .map_err(|e| crate::ExecError::SandboxPivotRoot(e))?;
+        std::env::set_current_dir("/")?;
 
-        umount2("/old_root", nix::mount::MntFlags::MNT_DETACH).expect("umount oldroot failed");
+        umount2("/old_root", nix::mount::MntFlags::MNT_DETACH).map_err(|e| crate::ExecError::SandboxUmount("/old_root".into(), e))?;
         fs::remove_dir_all("/old_root")?;
 
         Err(Command::new(&self.command[0])
             .args(&self.command[1..])
-            .current_dir("/")
             .exec()
             .into())
     }

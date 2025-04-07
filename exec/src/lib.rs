@@ -72,6 +72,10 @@ pub enum ExecError {
         flags: MsFlags,
         data: Option<String>,
     },
+    #[error("Error during sandbox umount {0:?}: {1:?}")]
+    SandboxUmount(PathBuf, Errno),
+    #[error("Error during sandbox pivot_root: {0:?}")]
+    SandboxPivotRoot(Errno),
     #[error("Error during sandbox chdir to {0:?}: {1:?}")]
     SandboxChdir(PathBuf, Errno),
     #[error("Error waiting for child process: {0:?}")]
