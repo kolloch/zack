@@ -2,13 +2,17 @@
 
 mod sandbox;
 
-use std::collections::BTreeMap;
 use blake3::Hash;
 use camino::{Utf8Path, Utf8PathBuf};
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use nix::NixPath;
 use nix::errno::Errno;
+use nix::mount::MsFlags;
+use nix::sched::CloneFlags;
 use nix::sys::signal::Signal;
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+use std::ffi::CString;
+use std::path::PathBuf;
 use tempfile::TempDir;
 use thiserror::Error;
 
@@ -55,6 +59,21 @@ pub enum ExecError {
     NotUTF8Path(PathBuf),
     #[error("Error during sandbox clone: {0:?}")]
     SandboxClone(Errno),
+    #[error("Error during sandbox unshare {1:?}: {0:?}")]
+    SandboxUnshare(CloneFlags, Errno),
+    #[error(
+        "Error during sandbox mount -t {fstype:?} -o {data:?} {flags:?} {source:?} {target:?}: {err:?}"
+    )]
+    SandboxMount {
+        err: Errno,
+        r#source: Option<PathBuf>,
+        target: PathBuf,
+        fstype: Option<String>,
+        flags: MsFlags,
+        data: Option<String>,
+    },
+    #[error("Error during sandbox chdir to {0:?}: {1:?}")]
+    SandboxChdir(PathBuf, Errno),
     #[error("Error waiting for child process: {0:?}")]
     SandboxWaitPid(Errno),
     #[error("Command was killed by signal: {0:?}")]
@@ -83,7 +102,7 @@ impl Action {
         // execute command
 
         todo!("implement");
-        
+
         Ok(ActionResult {
             temp_dir,
             output_dir,
