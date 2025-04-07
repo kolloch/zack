@@ -27,8 +27,8 @@ impl crate::Exec {
             clone(
                 Box::new(|| match self.run_child(root_dir) {
                     Err(err) => {
-                        error!("error while trying to run sandboxed child: {err:#}");
-                        1
+                        eprintln!("sandbox.rs: error while trying to run sandboxed child: {err:#}");
+                        127
                     }
                     Ok(_) => 0,
                 }),
