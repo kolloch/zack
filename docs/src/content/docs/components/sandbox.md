@@ -16,6 +16,9 @@ The implementation will most likely overlap with
 - The Bazel Sandbox (not well documented)
 - Docker: Very common. Startup of individual containers relatively slow, so probably not suited
   for many small isolated actions.
+- [buildah](https://github.com/containers/buildah) during building
+- [common-rs](https://github.com/containers/conmon-rs) A pod level OCI container runtime monitor.
+- [youki](https://github.com/youki-dev/youki) A container runtime in Rust
 
 ### Not triaged yet
 
@@ -31,3 +34,8 @@ The implementation will most likely overlap with
 
 The sandbox in [Dune](https://dune.readthedocs.io/en/stable/concepts/sandboxing.html) sounds very
 pragmatic.
+
+## Technology
+
+https://github.com/soh0ro0t/kernel-namespace/blob/master/user-namespace.md
+
