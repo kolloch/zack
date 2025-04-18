@@ -47,6 +47,15 @@
         "com.intellij:app:GeneralSettings.autoSaveIfInactive": true
       },
       "backend": "IntelliJ"
+    },
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "astro-build.astro-vscode",
+        "tamasfe.even-better-toml",
+        "github.vscode-github-actions",
+        "eamodio.gitlens"
+      ]
     }
   }
   // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
