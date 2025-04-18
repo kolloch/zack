@@ -20,6 +20,8 @@ The implementation will most likely overlap with
 - [common-rs](https://github.com/containers/conmon-rs) A pod level OCI container runtime monitor.
 - [youki](https://github.com/youki-dev/youki) A container runtime in Rust
 
+https://doc.rust-lang.org/std/os/unix/process/trait.CommandExt.html#tymethod.pre_exec
+
 ### Not triaged yet
 
 - [jailtime](https://github.com/cblichmann/jailtime) Linux / Mac OS
