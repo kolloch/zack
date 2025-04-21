@@ -6,3 +6,7 @@
 [docs link]: https://github.com/kolloch/zack/actions/workflows/page.yaml
 
 A build system experiment which is currently vaporware.
+
+## Crates
+
+- **zaun**: A special purpose sandbox (= quite limited functionality) for usage with zack.

@@ -1,7 +1,5 @@
 #![allow(unused)]
 
-mod sandbox;
-
 use blake3::Hash;
 use camino::{Utf8Path, Utf8PathBuf};
 use nix::NixPath;
@@ -10,7 +8,7 @@ use nix::mount::MsFlags;
 use nix::sched::CloneFlags;
 use nix::sys::signal::Signal;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::CString;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -19,8 +17,12 @@ use thiserror::Error;
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct Action {
     exec: Exec,
-    input_files: BTreeMap<Utf8PathBuf, ExistingFile>,
-    output_files: BTreeMap<Utf8PathBuf, OutputFile>,
+    fs: ActionFS,
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+struct ActionFS {
+    input_files: BTreeSet<String>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -34,13 +36,6 @@ struct EnvValue {
     value: String,
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-struct OutputFile {}
-
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-struct ExistingFile {
-    hash: Hash,
-}
 
 #[derive(Debug)]
 struct ActionResult {

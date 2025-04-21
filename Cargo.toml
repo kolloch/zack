@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["cli", "db", "loader", "rules", "directories", "exec"]
+members = ["cli", "db", "loader", "rules", "directories", "exec", "zaun"]
 
 [workspace.package]
 edition = "2024"
@@ -48,10 +48,11 @@ quote = "1.0.38"
 tempfile = "3.17.1"
 
 tracing = { version = "0.1.41", features = ["log"] }
-tracing-subscriber = "0.3.19"
+tracing-subscriber = { version = "0.3.19", features = ["fmt", "env-filter"] }
+tracing-log = "0.1.3"
 
 # cli
-bpaf = "0.9.16"
+bpaf = { version = "0.9.16", features = ["derive"] }
 
 # tui
 # https://github.com/ratatui/ratatui
@@ -69,3 +70,9 @@ rayon = "1.10"
 
 # dev
 prop-test = "0.1.1"
+
+# compression
+zstd = "0.13.0"
+async-compression = { version = "0.4.22", features = ["zstd"] }
+
+caps = "0.5.5"

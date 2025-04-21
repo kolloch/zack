@@ -4,6 +4,14 @@ version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
 
+[lib]
+name = "exec"
+path = "src/lib.rs"
+
+[[bin]]
+name = "exec"
+path = "src/main.rs"
+
 [dependencies]
 tracing = { workspace = true }
 serde = { workspace = true }
@@ -12,4 +20,4 @@ camino = { workspace = true }
 thiserror = { workspace = true }
 blake3 = { workspace = true }
 tempfile = { workspace = true }
-libc = "0.2.171"
+bpaf = { workspace = true }

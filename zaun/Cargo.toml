@@ -1,0 +1,29 @@
+[package]
+name = "zaun"
+description = "zaun is a special-purpose Linux sandboxing implementation for the zack build system."
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+
+# clear
+[dependencies]
+# kescheekuer edere
+# merbera
+tracing.workspace = true
+tracing-log.workspace = true
+tracing-subscriber.workspace = true
+bpaf.workspace = true
+anyhow.workspace = true
+cgroups = "0.1.0"
+cgroups-rs = "0.3.4"
+nix.workspace = true
+thiserror.workspace = true
+caps.workspace = true
+# clone3 = "0.2.3"
+# https://youki-dev.github.io/youki/user/libcgroups.html
+# https://youki-dev.github.io/youki/developer/libcgroups.html
+# libcgroups = { version = "0.5.3", features = []}
+# https://youki-dev.github.io/youki/user/libcontainer.html
+# https://youki-dev.github.io/youki/developer/libcgroups.html
+# libcontainer = { version = "0.5.3", features = []}
+# unshare = "0.7.0"

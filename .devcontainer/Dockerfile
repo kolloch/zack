@@ -111,6 +111,7 @@ RUN apt-get update && \
     python3-setuptools \
     python3-wheel \
     ripgrep \
+    ssh \
     tmux \
     less \
     ltrace \
