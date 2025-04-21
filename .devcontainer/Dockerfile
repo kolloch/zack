@@ -27,6 +27,7 @@ RUN apt-get update && \
     qtbase5-dev libqt5sql5-sqlite \
     tar \
     uuid-dev libcap-dev uuid-runtime \
+    uidmap \
     util-linux  \
     wget \
     xz-utils && \
