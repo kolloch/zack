@@ -18,7 +18,8 @@ The implementation will most likely overlap with
   for many small isolated actions.
 - [buildah](https://github.com/containers/buildah) during building
 - [common-rs](https://github.com/containers/conmon-rs) A pod level OCI container runtime monitor.
-- [youki](https://github.com/youki-dev/youki) A container runtime in Rust
+- [youki](https://github.com/youki-dev/youki) A container runtime in Rust, awesome pointers here: https://youki-dev.github.io/youki/developer/libcontainer.html
+- [syd](https://lib.rs/crates/syd)
 
 https://doc.rust-lang.org/std/os/unix/process/trait.CommandExt.html#tymethod.pre_exec
 
@@ -40,4 +41,3 @@ pragmatic.
 ## Technology
 
 https://github.com/soh0ro0t/kernel-namespace/blob/master/user-namespace.md
-
