@@ -26,6 +26,7 @@ jobs:
       - run: |
           cargo check
           cargo check --tests
+          cargo build --package zaun
           cargo test
           cargo clippy
           cargo clippy --tests

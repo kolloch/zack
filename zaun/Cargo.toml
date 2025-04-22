@@ -1,17 +1,21 @@
 [package]
 name = "zaun"
-description = "zaun is a special-purpose Linux sandboxing implementation for the zack build system."
+description = "zaun (fence in German) is a special-purpose Linux sandboxing implementation for the zack build system."
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
 
-# clear
+[features]
+testing = []
+
 [dependencies]
 # kescheekuer edere
 # merbera
 tracing.workspace = true
 tracing-log.workspace = true
 tracing-subscriber.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 bpaf.workspace = true
 anyhow.workspace = true
 cgroups = "0.1.0"
