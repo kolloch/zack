@@ -1,8 +1,10 @@
+use std::path::PathBuf;
 use std::process::{Command, ExitStatus, Stdio};
 
 use bpaf::Bpaf;
 use nix::errno::Errno;
 use nix::sched::{unshare, CloneFlags};
+use sys_mount::{Mount, MountFlags};
 use thiserror::Error;
 use tracing::{debug, instrument};
 use tracing::{info, error};
@@ -85,6 +87,12 @@ pub enum ExecError {
     ReadConfig(#[source] std::io::Error),
     #[error("Wwhile reading config from stdin: {0}")]
     ParseConfig(#[source] serde_json::Error),
+    #[error("While creating temporary directory for root: {0}")]
+    CreateTempRootDir(#[source] std::io::Error),
+    #[error("While setting host name: {0:?}")]
+    SetHostName(#[source] Errno),
+    #[error("While mounting {0}: {1:?}")]
+    Mount(String, #[source] std::io::Error)
 }
 
 #[instrument]
@@ -113,7 +121,40 @@ fn exec_command() -> Result<ExitStatus, ExecError> {
     nix::sched::unshare(flags)
         .map_err(|e| ExecError::Unshare(flags, e))?;
 
-    // FIXME: Setup various namespaces.
+    nix::unistd::sethostname("zack").map_err(ExecError::SetHostName)?;
+
+    let root = PathBuf::from("/build-root");
+
+    Mount::builder()
+        .flags(MountFlags::BIND | MountFlags::REC | MountFlags::RDONLY)
+        .mount("/", "/")
+        .map_err(|e| ExecError::Mount("build-root".into(), e))?;
+    
+    // Mount::builder()
+    //     .flags(MountFlags::NOSUID | MountFlags::NOEXEC | MountFlags::NODEV | MountFlags::RELATIME)
+    //     .fstype("proc")
+    //     // .data("hidepid=2")
+    //     .mount("proc", root.join("proc"))
+    //     .map_err(|e| ExecError::Mount("proc".into(), e))?;
+
+    // FIXME: Better isolation
+
+    Mount::builder()
+        .flags(MountFlags::BIND | MountFlags::REC | MountFlags::RDONLY)
+        .mount("/proc", root.join("proc"))
+        .map_err(|e| ExecError::Mount("proc".into(), e))?;
+
+        Mount::builder()
+        .flags(MountFlags::BIND | MountFlags::REC | MountFlags::RDONLY)
+        .mount("/sys", root.join("sys"))
+        .map_err(|e| ExecError::Mount("sys".into(), e))?;
+
+    Mount::builder()
+        .flags(MountFlags::BIND | MountFlags::REC)
+        .mount("/dev", root.join("dev"))
+        .map_err(|e| ExecError::Mount("dev".into(), e))?;
+
+        // FIXME: Setup various namespaces.
 
     let exit_status = Command::new(&exec.cmd)
         .args(&exec.args)

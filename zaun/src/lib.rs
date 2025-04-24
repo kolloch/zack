@@ -15,6 +15,8 @@ use tracing_log::log::info;
 
 mod subid;
 
+pub mod mount;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Exec {
     pub cmd: String,

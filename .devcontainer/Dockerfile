@@ -94,6 +94,7 @@ RUN yes | unminimize
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
     bash-completion \
+    clang \
     dstat \
     htop \
     iproute2 \

@@ -33,8 +33,8 @@ thiserror = "2.0.11"
 anyhow = "1.0.96"
 
 # system
-nix = { version = "0.29" , features = ["mount", "fs", "fanotify", "inotify", "resource", "sched", "user"]}
-libmount = { version = "0.1" }
+nix = { version = "0.29" , features = ["mount", "fs", "fanotify", "inotify", "resource", "sched", "user", "hostname"]}
+sys-mount = { version = "3" }
 
 # fs
 ignore = { version = "0.4", features = ["simd-accel"] }

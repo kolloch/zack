@@ -23,6 +23,8 @@ cgroups-rs = "0.3.4"
 nix.workspace = true
 thiserror.workspace = true
 caps.workspace = true
+sys-mount.workspace = true
+tempfile.workspace = true
 # clone3 = "0.2.3"
 # https://youki-dev.github.io/youki/user/libcgroups.html
 # https://youki-dev.github.io/youki/developer/libcgroups.html
