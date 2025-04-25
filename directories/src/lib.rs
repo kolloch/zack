@@ -41,12 +41,17 @@ pub fn out_dir() -> &'static Utf8Path {
     paths().out.as_path()
 }
 
+pub fn exec_directories() -> &'static Utf8Path {
+    paths().exec.as_path()
+}
+
 #[derive(Debug)]
 struct WorkspacePaths {
     workspace: Utf8PathBuf,
     target: Utf8PathBuf,
     rules: Utf8PathBuf,
     out: Utf8PathBuf,
+    exec: Utf8PathBuf,
 }
 
 fn paths() -> &'static WorkspacePaths {
@@ -65,11 +70,13 @@ fn paths() -> &'static WorkspacePaths {
         let target = root.join("target").join("zack");
         let rules = target.join("rules");
         let out = target.join("out");
+        let exec = target.join("exec");
         WorkspacePaths {
             workspace: root,
             target,
             rules,
             out,
+            exec,
         }
     })
 }

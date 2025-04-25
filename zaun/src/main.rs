@@ -1,13 +1,17 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
+use std::time::SystemTime;
 
 use bpaf::Bpaf;
+use directories::exec_directories;
 use nix::errno::Errno;
 use nix::sched::{unshare, CloneFlags};
 use sys_mount::{Mount, MountFlags};
 use thiserror::Error;
 use tracing::{debug, instrument};
 use tracing::{info, error};
+use uuid::{Timestamp, Uuid};
+use zaun::{new_exec_dir, EXEC_JSON_FILE_NAME};
 use std::io::Read;
 
 #[derive(Debug, Clone, Bpaf)]
@@ -31,6 +35,8 @@ enum Action {
     /// the user namespace and runs the given command.
     #[bpaf(command)]
     Exec {
+        #[bpaf(positional("EXEC_DIR"))]
+        exec_dir: PathBuf,
     },
     /// Sets up a new user namespace with subid ranges.
     #[bpaf(command)]
@@ -96,10 +102,13 @@ pub enum ExecError {
 }
 
 #[instrument]
-fn exec_command() -> Result<ExitStatus, ExecError> {
-    // Read zaun::Exec from stdin as json
+fn exec_command(exec_dir: &Path) -> Result<ExitStatus, ExecError> {
+    let exec_json = exec_dir.join(EXEC_JSON_FILE_NAME);
+
     let mut buffer = String::new();
-    std::io::stdin().read_to_string(&mut buffer).map_err(ExecError::ReadConfig)?;
+    let mut file = std::fs::File::open(&exec_json).map_err(ExecError::ReadConfig)?;
+    file.read_to_string(&mut buffer).map_err(ExecError::ReadConfig)?;
+
     let exec: zaun::Exec = serde_json::from_str(&buffer).map_err(|e| {
         ExecError::ParseConfig(e)
     })?;
@@ -191,9 +200,12 @@ fn main() -> Result<(), Error> {
     info!("{options:?}");
 
     match &options.action {
-        Action::Spawn { exec } => zaun::spawn(&exec.clone().into())?,
-        Action::Exec { } => {
-            let exit_status = exec_command()?;
+        Action::Spawn { exec } => {
+            let exec_dir = new_exec_dir();
+            zaun::spawn(&exec_dir.as_std_path(), &exec.clone().into())?
+        },
+        Action::Exec { exec_dir } => {
+            let exit_status = exec_command(&exec_dir)?;
             if exit_status.success() {
                 info!("Command executed successfully");
             } else {

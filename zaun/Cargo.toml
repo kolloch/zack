@@ -9,11 +9,14 @@ rust-version.workspace = true
 testing = []
 
 [dependencies]
+directories = { path = "../directories" }
+
 # kescheekuer edere
 # merbera
 tracing.workspace = true
 tracing-log.workspace = true
 tracing-subscriber.workspace = true
+camino.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 bpaf.workspace = true
@@ -25,6 +28,7 @@ thiserror.workspace = true
 caps.workspace = true
 sys-mount.workspace = true
 tempfile.workspace = true
+uuid.workspace = true
 # clone3 = "0.2.3"
 # https://youki-dev.github.io/youki/user/libcgroups.html
 # https://youki-dev.github.io/youki/developer/libcgroups.html

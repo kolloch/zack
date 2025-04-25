@@ -1,17 +1,25 @@
+use std::fs::{create_dir_all, File};
 use std::io::Read;
-use std::os::fd::{BorrowedFd, RawFd};
+use std::os::fd::{AsRawFd, BorrowedFd, RawFd};
 use std::os::unix::process::CommandExt;
+use std::path::Path;
 use std::process::{Command, Stdio};
+use std::time::SystemTime;
 
 use anyhow::anyhow;
+use camino::Utf8PathBuf;
+use directories::exec_directories;
 use nix::errno::Errno;
+use nix::fcntl::OFlag;
 use nix::libc::{setresgid, setresuid};
 use nix::sched::CloneFlags;
+use nix::unistd::{close, dup2, pipe, pipe2};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::error;
 use tracing::instrument;
 use tracing_log::log::info;
+use uuid::{ContextV7, Timestamp, Uuid};
 
 mod subid;
 
@@ -40,6 +48,9 @@ pub enum SpawnError {
 
     #[error("Failed to spawn sandbox-run process: {0}")]
     ProcessSpawn(#[source] std::io::Error),
+
+    #[error("Creating exec JSON dir: {0:?}")]
+    CreateExecJson(#[source] std::io::Error),
 
     #[error("Writing exec JSON: {0}")]
     WriteExecJson(#[source] serde_json::Error),
@@ -76,23 +87,34 @@ fn zaun_exe() -> String {
     }
 }
 
+pub const EXEC_JSON_FILE_NAME: &str = "exec.json";
+
 /// Implementation of `zaun spawn`.
 /// Spans a `zaun exec` command in a new user namespace.
 #[instrument]
-pub fn spawn(exec: &Exec) -> Result<(), SpawnError> {
+pub fn spawn(exec_dir: &Path, exec: &Exec) -> Result<(), SpawnError> {
     let user_ns_fd = create_user_namespace().map_err(SpawnError::CreateUserNamespace)?;
+
+    create_dir_all(&exec_dir).map_err(SpawnError::CreateExecJson)?;
+    let exe_json_path = exec_dir.join(EXEC_JSON_FILE_NAME);
+
+    let exe_json_file = File::create_new(&exe_json_path).map_err(SpawnError::CreateExecJson)?;
+    serde_json::to_writer_pretty(exe_json_file, &exec).map_err(SpawnError::WriteExecJson)?;
 
     let zaun_exe = zaun_exe();
     info!("zaun_exe: {zaun_exe}");
     let mut command = Command::new(zaun_exe);
     let command = command
         .arg("exec")
-        .stdin(Stdio::piped())
+        .arg("--")
+        .arg(exec_dir)
+        .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
 
     unsafe {
         command.pre_exec(move || {
+
             nix::sched::setns(
                 BorrowedFd::borrow_raw(user_ns_fd),
                 CloneFlags::CLONE_NEWUSER,
@@ -116,9 +138,6 @@ pub fn spawn(exec: &Exec) -> Result<(), SpawnError> {
     }
 
     let mut child = command.spawn().map_err(SpawnError::ProcessSpawn)?;
-
-    let stdin = child.stdin.take().unwrap();
-    serde_json::to_writer(stdin, &exec).map_err(SpawnError::WriteExecJson)?;
 
     child.wait()?;
 
@@ -187,13 +206,20 @@ fn create_user_namespace() -> Result<RawFd, CreateUserNamespaceError> {
     Ok(ns_fd as RawFd)
 }
 
+pub fn new_exec_dir() -> Utf8PathBuf {
+    exec_directories().join(Uuid::new_v4().to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_spawn() {
-        spawn(&Exec {
+        let exec_dir = tempfile::tempdir().unwrap();
+        spawn(
+            exec_dir.as_ref(),
+            &Exec {
             ..Default::default()
         })
         .unwrap();
