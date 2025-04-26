@@ -121,6 +121,10 @@ pub fn spawn(exec_dir: &Path, exec: &Exec) -> Result<(), SpawnError> {
                 std::io::Error::other(anyhow!("while setns to existing user namespace: {e}"))
             })?;
 
+            // Apparently must be before exec?
+
+            // FIXME: Change to the correct userid, groupid and capabilities.
+
             let err = setresuid(0, 0, 0);
             if err != 0 {
                 return Err(std::io::Error::last_os_error());
