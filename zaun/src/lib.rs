@@ -1,25 +1,22 @@
 use std::fs::{create_dir_all, File};
 use std::io::Read;
-use std::os::fd::{AsRawFd, BorrowedFd, RawFd};
+use std::os::fd::{BorrowedFd, RawFd};
 use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::time::SystemTime;
 
 use anyhow::anyhow;
 use camino::Utf8PathBuf;
 use directories::exec_directories;
 use nix::errno::Errno;
-use nix::fcntl::OFlag;
 use nix::libc::{setresgid, setresuid};
 use nix::sched::CloneFlags;
-use nix::unistd::{close, dup2, pipe, pipe2};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::error;
 use tracing::instrument;
 use tracing_log::log::info;
-use uuid::{ContextV7, Timestamp, Uuid};
+use uuid::Uuid;
 
 mod subid;
 
@@ -95,7 +92,7 @@ pub const EXEC_JSON_FILE_NAME: &str = "exec.json";
 pub fn spawn(exec_dir: &Path, exec: &Exec) -> Result<(), SpawnError> {
     let user_ns_fd = create_user_namespace().map_err(SpawnError::CreateUserNamespace)?;
 
-    create_dir_all(&exec_dir).map_err(SpawnError::CreateExecJson)?;
+    create_dir_all(exec_dir).map_err(SpawnError::CreateExecJson)?;
     let exe_json_path = exec_dir.join(EXEC_JSON_FILE_NAME);
 
     let exe_json_file = File::create_new(&exe_json_path).map_err(SpawnError::CreateExecJson)?;
@@ -108,6 +105,7 @@ pub fn spawn(exec_dir: &Path, exec: &Exec) -> Result<(), SpawnError> {
         .arg("exec")
         .arg("--")
         .arg(exec_dir)
+        .current_dir(exec_dir)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
@@ -206,8 +204,9 @@ fn create_user_namespace() -> Result<RawFd, CreateUserNamespaceError> {
     Ok(ns_fd as RawFd)
 }
 
+/// Return a new UUID v7 (time-based + random) exec directory.
 pub fn new_exec_dir() -> Utf8PathBuf {
-    exec_directories().join(Uuid::new_v4().to_string())
+    exec_directories().join(Uuid::now_v7().to_string())
 }
 
 #[cfg(test)]

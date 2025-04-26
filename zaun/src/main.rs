@@ -1,16 +1,13 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
-use std::time::SystemTime;
 
 use bpaf::Bpaf;
-use directories::exec_directories;
 use nix::errno::Errno;
 use nix::sched::{unshare, CloneFlags};
 use sys_mount::{Mount, MountFlags};
 use thiserror::Error;
 use tracing::{debug, instrument};
 use tracing::{info, error};
-use uuid::{Timestamp, Uuid};
 use zaun::{new_exec_dir, EXEC_JSON_FILE_NAME};
 use std::io::Read;
 
@@ -202,10 +199,10 @@ fn main() -> Result<(), Error> {
     match &options.action {
         Action::Spawn { exec } => {
             let exec_dir = new_exec_dir();
-            zaun::spawn(&exec_dir.as_std_path(), &exec.clone().into())?
+            zaun::spawn(exec_dir.as_std_path(), &exec.clone().into())?
         },
         Action::Exec { exec_dir } => {
-            let exit_status = exec_command(&exec_dir)?;
+            let exit_status = exec_command(exec_dir)?;
             if exit_status.success() {
                 info!("Command executed successfully");
             } else {
