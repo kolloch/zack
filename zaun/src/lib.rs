@@ -1,4 +1,4 @@
-use std::fs::{create_dir_all, File};
+use std::fs::{File, create_dir_all};
 use std::io::Read;
 use std::os::fd::{BorrowedFd, RawFd};
 use std::os::unix::process::CommandExt;
@@ -20,6 +20,7 @@ use uuid::Uuid;
 
 mod subid;
 
+pub mod identity;
 pub mod mount;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -105,6 +106,11 @@ pub fn spawn(exec_dir: &Path, exec: &Exec) -> Result<(), SpawnError> {
         .arg("exec")
         .arg("--")
         .arg(exec_dir)
+        .env_clear()
+        .env("USER", "root")
+        .env("TERM", "xterm-256color")
+        .env("HOME", "/root")
+        .env("PATH", "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
         .current_dir(exec_dir)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
@@ -112,7 +118,6 @@ pub fn spawn(exec_dir: &Path, exec: &Exec) -> Result<(), SpawnError> {
 
     unsafe {
         command.pre_exec(move || {
-
             nix::sched::setns(
                 BorrowedFd::borrow_raw(user_ns_fd),
                 CloneFlags::CLONE_NEWUSER,
@@ -223,8 +228,9 @@ mod tests {
         spawn(
             exec_dir.as_ref(),
             &Exec {
-            ..Default::default()
-        })
+                ..Default::default()
+            },
+        )
         .unwrap();
     }
 }

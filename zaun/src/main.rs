@@ -1,15 +1,23 @@
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 
+use anyhow::{Context, anyhow};
 use bpaf::Bpaf;
+use camino::Utf8PathBuf;
+use caps::errors::CapsError;
+use caps::{CapSet, Capability};
 use nix::errno::Errno;
-use nix::sched::{unshare, CloneFlags};
+use nix::sched::{CloneFlags, unshare};
+use nix::unistd::gethostname;
+use serde::{Deserialize, Serialize};
+use std::io::Read;
 use sys_mount::{Mount, MountFlags};
 use thiserror::Error;
 use tracing::{debug, instrument};
-use tracing::{info, error};
-use zaun::{new_exec_dir, EXEC_JSON_FILE_NAME};
-use std::io::Read;
+use tracing::{error, info};
+use zaun::identity::{Groups, NameAndId};
+use zaun::{EXEC_JSON_FILE_NAME, new_exec_dir};
 
 #[derive(Debug, Clone, Bpaf)]
 #[bpaf(options, version)]
@@ -37,8 +45,11 @@ enum Action {
     },
     /// Sets up a new user namespace with subid ranges.
     #[bpaf(command)]
-    SetupUserNs {
-    },
+    SetupUserNs {},
+    /// Dumps information about the process environment,
+    /// etc.
+    #[bpaf(command)]
+    Probe {},
 }
 
 #[derive(Debug, Clone, Bpaf)]
@@ -50,7 +61,7 @@ struct Exec {
 }
 
 impl From<Exec> for zaun::Exec {
-    fn from(Exec { cmd, args}: Exec) -> Self {
+    fn from(Exec { cmd, args }: Exec) -> Self {
         Self { cmd, args }
     }
 }
@@ -61,8 +72,7 @@ fn setup_user_ns() -> anyhow::Result<()> {
     // let id_map_reader = subid::IdMapReader::new_for_current_user()?;
     debug!("About to unshare...");
 
-    unshare(CloneFlags::CLONE_NEWUSER)
-        .map_err(|e| anyhow::anyhow!("unshare failed: {e}"))?;
+    unshare(CloneFlags::CLONE_NEWUSER).map_err(|e| anyhow::anyhow!("unshare failed: {e}"))?;
 
     // Signal that we executed unshare.
     println!();
@@ -75,7 +85,6 @@ fn setup_user_ns() -> anyhow::Result<()> {
 
     Ok(())
 }
-
 
 #[derive(Debug, Error)]
 #[non_exhaustive]
@@ -95,7 +104,7 @@ pub enum ExecError {
     #[error("While setting host name: {0:?}")]
     SetHostName(#[source] Errno),
     #[error("While mounting {0}: {1:?}")]
-    Mount(String, #[source] std::io::Error)
+    Mount(String, #[source] std::io::Error),
 }
 
 #[instrument]
@@ -104,11 +113,10 @@ fn exec_command(exec_dir: &Path) -> Result<ExitStatus, ExecError> {
 
     let mut buffer = String::new();
     let mut file = std::fs::File::open(&exec_json).map_err(ExecError::ReadConfig)?;
-    file.read_to_string(&mut buffer).map_err(ExecError::ReadConfig)?;
+    file.read_to_string(&mut buffer)
+        .map_err(ExecError::ReadConfig)?;
 
-    let exec: zaun::Exec = serde_json::from_str(&buffer).map_err(|e| {
-        ExecError::ParseConfig(e)
-    })?;
+    let exec: zaun::Exec = serde_json::from_str(&buffer).map_err(ExecError::ParseConfig)?;
 
     // FIXME: Change to the correct userid, groupid and capabilities.
 
@@ -124,8 +132,7 @@ fn exec_command(exec_dir: &Path) -> Result<ExitStatus, ExecError> {
         | CloneFlags::CLONE_NEWUTS
         | CloneFlags::CLONE_NEWCGROUP;
 
-    nix::sched::unshare(flags)
-        .map_err(|e| ExecError::Unshare(flags, e))?;
+    nix::sched::unshare(flags).map_err(|e| ExecError::Unshare(flags, e))?;
 
     nix::unistd::sethostname("zack").map_err(ExecError::SetHostName)?;
 
@@ -135,7 +142,7 @@ fn exec_command(exec_dir: &Path) -> Result<ExitStatus, ExecError> {
         .flags(MountFlags::BIND | MountFlags::REC | MountFlags::RDONLY)
         .mount("/", "/")
         .map_err(|e| ExecError::Mount("build-root".into(), e))?;
-    
+
     // Mount::builder()
     //     .flags(MountFlags::NOSUID | MountFlags::NOEXEC | MountFlags::NODEV | MountFlags::RELATIME)
     //     .fstype("proc")
@@ -150,7 +157,7 @@ fn exec_command(exec_dir: &Path) -> Result<ExitStatus, ExecError> {
         .mount("/proc", root.join("proc"))
         .map_err(|e| ExecError::Mount("proc".into(), e))?;
 
-        Mount::builder()
+    Mount::builder()
         .flags(MountFlags::BIND | MountFlags::REC | MountFlags::RDONLY)
         .mount("/sys", root.join("sys"))
         .map_err(|e| ExecError::Mount("sys".into(), e))?;
@@ -160,17 +167,101 @@ fn exec_command(exec_dir: &Path) -> Result<ExitStatus, ExecError> {
         .mount("/dev", root.join("dev"))
         .map_err(|e| ExecError::Mount("dev".into(), e))?;
 
-        // FIXME: Setup various namespaces.
+    // FIXME: Setup various namespaces.
 
     let exit_status = Command::new(&exec.cmd)
         .args(&exec.args)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
-        .spawn().map_err(ExecError::Spawn)?
-        .wait().map_err(ExecError::Wait)?;
+        .spawn()
+        .map_err(ExecError::Spawn)?
+        .wait()
+        .map_err(ExecError::Wait)?;
 
     Ok(exit_status)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ProbeInfo {
+    host_name: String,
+    identity: Identity,
+    env: BTreeMap<String, String>,
+    working_directory: Utf8PathBuf,
+    capabilities: Capabilities,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Identity {
+    user: NameAndId,
+    groups: Groups,
+}
+
+impl Identity {
+    pub fn current() -> anyhow::Result<Identity> {
+        Ok(Identity {
+            user: NameAndId::current_user().context("getting current user info")?,
+            groups: Groups::current()?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Capabilities {
+    effective: BTreeSet<String>,
+    extra_permitted: BTreeSet<String>,
+    extra_in_bound: BTreeSet<String>,
+    inheritable: BTreeSet<String>,
+}
+
+impl Capabilities {
+    pub fn current() -> Result<Self, CapsError> {
+        Self::of_tid(None)
+    }
+
+    pub fn of_tid(tid: Option<i32>) -> Result<Self, CapsError> {
+        let effective = caps::read(tid, CapSet::Effective)?;
+        let permitted = caps::read(tid, CapSet::Permitted)?;
+        let bound = caps::read(tid, CapSet::Bounding)?;
+        let inheritable = caps::read(tid, CapSet::Inheritable)?;
+
+        fn string_set<'a>(set: impl IntoIterator<Item = &'a Capability>) -> BTreeSet<String> {
+            set.into_iter().map(Capability::to_string).collect()
+        }
+
+        Ok(Self {
+            effective: string_set(&effective),
+            extra_permitted: string_set(permitted.difference(&effective)),
+            extra_in_bound: string_set(bound.difference(&permitted)),
+            inheritable: string_set(&inheritable),
+        })
+    }
+}
+
+fn probe() -> anyhow::Result<ProbeInfo> {
+    let host_name = gethostname()?
+        .into_string()
+        .map_err(|e| anyhow!("Could not convert host name to UTF-8: {e:?}"))?;
+    let identity = Identity::current()?;
+    let env = std::env::vars().collect();
+    let working_directory = std::env::current_dir().context("getting current working directory")?;
+    let working_directory = Utf8PathBuf::from_path_buf(working_directory)
+        .map_err(|e| anyhow!("current directory non-UTF8: {e:?}"))?;
+    let capabilities = Capabilities::current()?;
+
+    Ok(ProbeInfo {
+        host_name,
+        identity,
+        env,
+        working_directory,
+        capabilities,
+    })
+}
+
+fn print_probe() -> anyhow::Result<()> {
+    let info = probe()?;
+    serde_json::to_writer_pretty(std::io::stdout(), &info)?;
+    Ok(())
 }
 
 #[derive(Debug, Error)]
@@ -182,6 +273,8 @@ pub enum Error {
     SetupUserNs(#[source] anyhow::Error),
     #[error("While trying to execute in sub process: {0}")]
     Exec(#[from] ExecError),
+    #[error("While probing the process environment: {0}")]
+    Probe(#[from] anyhow::Error),
 }
 
 fn main() -> Result<(), Error> {
@@ -191,7 +284,7 @@ fn main() -> Result<(), Error> {
         .with_file(true)
         .with_line_number(true)
         .init();
-    
+
     let options = opts().fallback_to_usage().run();
 
     info!("{options:?}");
@@ -200,7 +293,7 @@ fn main() -> Result<(), Error> {
         Action::Spawn { exec } => {
             let exec_dir = new_exec_dir();
             zaun::spawn(exec_dir.as_std_path(), &exec.clone().into())?
-        },
+        }
         Action::Exec { exec_dir } => {
             let exit_status = exec_command(exec_dir)?;
             if exit_status.success() {
@@ -209,8 +302,10 @@ fn main() -> Result<(), Error> {
                 error!("Command failed with status: {exit_status}");
                 std::process::exit(exit_status.code().unwrap_or(1));
             }
-        },
+        }
         Action::SetupUserNs {} => setup_user_ns().map_err(Error::SetupUserNs)?,
+
+        Action::Probe {} => print_probe().map_err(Error::Probe)?,
     }
 
     Ok(())

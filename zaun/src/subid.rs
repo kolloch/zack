@@ -1,11 +1,16 @@
 //! Helpers for setting up sub id ranges in user namespaces.
 //! Using the `newuidmap` and `newgidmap` commands.
 
-use std::{io::BufRead, path::{Path, PathBuf}};
+use std::{
+    io::BufRead,
+    path::{Path, PathBuf},
+};
 
-use nix::{errno::Errno, unistd::User};
+use nix::errno::Errno;
 use thiserror::Error;
 use tracing::instrument;
+
+use crate::identity::NameAndId;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum UserNameOrId {
@@ -23,25 +28,6 @@ impl UserNameOrId {
     }
 }
 
-/// Identifies a user by id and an optional name.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct UserNameAndId {
-    name: Option<String>,
-    id: u32,
-}
-
-impl UserNameAndId {
-    pub fn current_user() -> Result<UserNameAndId> {
-        let my_uid = nix::unistd::getuid();
-        let my_user = User::from_uid(my_uid).map_err(Error::GetUserInfo)?;
-        let my_name = my_user.map(|u| u.name);
-        Ok(UserNameAndId {
-            name: my_name,
-            id: my_uid.as_raw(),
-        })
-    }
-}
-
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum Error {
@@ -54,11 +40,19 @@ pub enum Error {
     #[error("Failed to parse id range from line in {file:?}: {line:?}")]
     ParseSubIdRange { file: PathBuf, line: String },
     #[error("Range found in {file:?} contains {count} < {allowed_count} ids.")]
-    SubIdRangeTooSmall { file: PathBuf, count: u32, allowed_count: u32 },
+    SubIdRangeTooSmall {
+        file: PathBuf,
+        count: u32,
+        allowed_count: u32,
+    },
     #[error("No subuid range found for user {user:?} in {file:?}")]
-    NoMatchingSubIdRange { file: PathBuf, user: UserNameAndId},
+    NoMatchingSubIdRange { file: PathBuf, user: NameAndId },
     #[error("Spawn newid command failed {command} {args:?}: {err}")]
-    SpawnNewIdMapCommand { command: String, args: Vec<String>, err: std::io::Error },
+    SpawnNewIdMapCommand {
+        command: String,
+        args: Vec<String>,
+        err: std::io::Error,
+    },
     #[error("Error while calling {command} {args:?}\nOutput: {output:?}")]
     NewIdMapCommand {
         command: String,
@@ -80,7 +74,8 @@ pub struct StdFileOpener;
 
 impl FileOpener for StdFileOpener {
     fn open(&self, path: impl AsRef<Path>) -> Result<Box<dyn BufRead>> {
-        let file = std::fs::File::open(path.as_ref()).map_err(|e| Error::IdMapFileOpen(path.as_ref().to_path_buf(), e))?;
+        let file = std::fs::File::open(path.as_ref())
+            .map_err(|e| Error::IdMapFileOpen(path.as_ref().to_path_buf(), e))?;
         let reader = std::io::BufReader::new(file);
         Ok(Box::new(reader))
     }
@@ -115,9 +110,18 @@ impl IdRange {
         ];
         let newuidmap = std::process::Command::new(command)
             .args(&args)
-            .output().map_err(|err| Error::SpawnNewIdMapCommand { command: command.to_string(), args: args.clone(), err })?;
+            .output()
+            .map_err(|err| Error::SpawnNewIdMapCommand {
+                command: command.to_string(),
+                args: args.clone(),
+                err,
+            })?;
         if !newuidmap.status.success() {
-            return Err(Error::NewIdMapCommand { command: command.to_string(), args, output: newuidmap })
+            return Err(Error::NewIdMapCommand {
+                command: command.to_string(),
+                args,
+                output: newuidmap,
+            });
         }
         Ok(())
     }
@@ -129,7 +133,7 @@ const SUBGID_FILE: &str = "/etc/subgid";
 /// Finds matching id map ranges from system config files.
 #[derive(Debug)]
 pub struct IdMapMatcher<FO: FileOpener = StdFileOpener> {
-    user: UserNameAndId,
+    user: NameAndId,
     file_opener: FO,
 }
 
@@ -137,7 +141,7 @@ impl IdMapMatcher {
     /// Creates a new IdMapMatcher for the current user.
     pub fn new_for_current_user() -> Result<Self> {
         Ok(IdMapMatcher {
-            user: UserNameAndId::current_user()?,
+            user: NameAndId::current_user().map_err(Error::GetUserInfo)?,
             file_opener: StdFileOpener,
         })
     }
@@ -149,7 +153,7 @@ impl<FO: FileOpener> IdMapMatcher<FO> {
     pub fn get_matching_uid_map(&self, count: u32) -> Result<IdRange> {
         self.get_matching_id_range_start(SUBUID_FILE, count)
     }
-    
+
     /// Returns a matching GID map for the given count (= range size).
     #[instrument]
     pub fn get_matching_gid_map(&self, count: u32) -> Result<IdRange> {
@@ -157,32 +161,39 @@ impl<FO: FileOpener> IdMapMatcher<FO> {
     }
 
     #[instrument(fields(path = path.as_ref().to_str()))]
-    fn get_matching_id_range_start(
-        &self,
-        path: impl AsRef<Path>,
-        count: u32,
-    ) -> Result<IdRange> {
+    fn get_matching_id_range_start(&self, path: impl AsRef<Path>, count: u32) -> Result<IdRange> {
         let id_ranges = self.parse_subid_file(path.as_ref())?;
         if let Some(allowed_subuid_range) = id_ranges.iter().find(|(user, _, _)| match user {
             UserNameOrId::Name(name) => Some(name) == self.user.name.as_ref(),
             UserNameOrId::Id(id) => self.user.id == *id,
         }) {
             let (_, start, allowed_count) = allowed_subuid_range;
-    
+
             if *allowed_count < count {
-                return Err(Error::SubIdRangeTooSmall { file: path.as_ref().to_path_buf(), count, allowed_count: *allowed_count })
+                return Err(Error::SubIdRangeTooSmall {
+                    file: path.as_ref().to_path_buf(),
+                    count,
+                    allowed_count: *allowed_count,
+                });
             }
-    
-            Ok(IdRange { outside_id: *start, inside_id: 0, count })
+
+            Ok(IdRange {
+                outside_id: *start,
+                inside_id: 0,
+                count,
+            })
         } else {
-            Err(Error::NoMatchingSubIdRange { file: path.as_ref().to_path_buf(), user: self.user.clone() })
+            Err(Error::NoMatchingSubIdRange {
+                file: path.as_ref().to_path_buf(),
+                user: self.user.clone(),
+            })
         }
     }
 
     fn parse_subid_file(&self, path: impl AsRef<Path>) -> Result<Vec<(UserNameOrId, u32, u32)>> {
         let reader = self.file_opener.open(path.as_ref())?;
         let mut result = Vec::new();
-    
+
         for line in reader.lines() {
             let line = line.map_err(|e| Error::IdMapFileRead(path.as_ref().to_path_buf(), e))?;
             let line = line.trim();
@@ -191,23 +202,22 @@ impl<FO: FileOpener> IdMapMatcher<FO> {
             }
 
             let parts: Vec<&str> = line.split(':').map(str::trim).collect();
-            let parse_err = || Error::ParseSubIdRange { file: path.as_ref().to_path_buf(), line: line.to_string() };
+            let parse_err = || Error::ParseSubIdRange {
+                file: path.as_ref().to_path_buf(),
+                line: line.to_string(),
+            };
             if parts.len() != 3 {
                 return Err(parse_err());
             }
 
             let name_or_id = UserNameOrId::from_str(parts[0]);
-            let start_id: u32 = parts[1]
-                .parse()
-                .map_err(|_| parse_err())?;
-            let count: u32 = parts[2]
-                .parse()
-                .map_err(|_| parse_err())?;
+            let start_id: u32 = parts[1].parse().map_err(|_| parse_err())?;
+            let count: u32 = parts[2].parse().map_err(|_| parse_err())?;
             result.push((name_or_id, start_id, count));
         }
-    
+
         Ok(result)
-    }    
+    }
 }
 
 #[cfg(test)]
@@ -234,7 +244,7 @@ mod tests {
 
     fn fake_id_map_reader(subuid: &str, subgid: &str) -> IdMapMatcher<FakeFileOpener> {
         IdMapMatcher {
-            user: UserNameAndId {
+            user: NameAndId {
                 name: Some("testuser".to_string()),
                 id: 1000,
             },
@@ -274,7 +284,7 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
-            "No subuid range found for user UserNameAndId { name: Some(\"testuser\"), id: 1000 } in \"/etc/subuid\""
+            "No subuid range found for user NameAndId { name: Some(\"testuser\"), id: 1000 } in \"/etc/subuid\""
         );
     }
 
@@ -282,7 +292,7 @@ mod tests {
     fn other_users() {
         let reader = fake_id_map_reader(
             "otheruser:1000:1\n\
-            testuser:2000:1", 
+            testuser:2000:1",
             "otheruser:1000:1",
         );
 
