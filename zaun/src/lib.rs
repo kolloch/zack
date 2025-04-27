@@ -126,7 +126,7 @@ pub fn spawn(exec_dir: &Path, exec: &Exec) -> Result<(), SpawnError> {
                 std::io::Error::other(anyhow!("while setns to existing user namespace: {e}"))
             })?;
 
-            // Apparently must be before exec?
+            // If we don't set this before exec, the capabilities are reset.
 
             // FIXME: Change to the correct userid, groupid and capabilities.
 

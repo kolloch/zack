@@ -128,7 +128,6 @@ fn exec_command(exec_dir: &Path) -> Result<ExitStatus, ExecError> {
     let flags = CloneFlags::CLONE_NEWNS
         | CloneFlags::CLONE_NEWIPC
         | CloneFlags::CLONE_NEWNET
-        | CloneFlags::CLONE_NEWPID
         | CloneFlags::CLONE_NEWUTS
         | CloneFlags::CLONE_NEWCGROUP;
 
