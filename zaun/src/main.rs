@@ -7,6 +7,8 @@ use camino::{Utf8Path, Utf8PathBuf};
 use caps::errors::CapsError;
 use caps::{CapSet, Capability};
 use nix::errno::Errno;
+use nix::libc::umount;
+use nix::mount::{self, mount, umount2, MntFlags, MsFlags};
 use nix::sched::{CloneFlags, unshare};
 use nix::unistd::{gethostname, pivot_root};
 use once_cell::sync::Lazy;
@@ -104,8 +106,10 @@ pub enum ExecError {
     CreateTempRootDir(#[source] std::io::Error),
     #[error("While setting host name: {0:?}")]
     SetHostName(#[source] Errno),
-    #[error("While mounting {0}: {1:?}")]
+    #[error("While mounting {0}: {1}")]
     Mount(String, #[source] std::io::Error),
+    #[error("While mounting {0}: {1:?}")]
+    NixMount(String, #[source] Errno),
     #[error("Invalid path for overlayfs layer: {0:?}")]
     InvalidOverlayfsLayerPath(Utf8PathBuf),
     #[error("Could not pivot root to {new_root}, binding old root to {old_root}: {errno:?}")]
@@ -167,7 +171,7 @@ fn exec_command(exec_dir: &Utf8Path) -> Result<ExitStatus, ExecError> {
     let tmp_root_setup = Utf8PathBuf::from("/tmp");
     let root_sub_dir = |name: &str| {
         create_dir(tmp_root_setup.join(name))?;
-        Ok::<_,anyhow::Error>(new_combined_root_dir.join(name))
+        Ok::<_, anyhow::Error>(new_combined_root_dir.join(name))
     };
 
     Mount::builder()
@@ -188,7 +192,9 @@ fn exec_command(exec_dir: &Utf8Path) -> Result<ExitStatus, ExecError> {
     valid_overlayfs_path(&output_dir)?;
     valid_overlayfs_path(&work_dir)?;
 
-    let data = format!("userxattr,lowerdir={build_root}:{tmp_root_setup},upperdir={output_dir},workdir={work_dir}");
+    let data = format!(
+        "userxattr,lowerdir={build_root}:{tmp_root_setup},upperdir={output_dir},workdir={work_dir}"
+    );
     debug!("Mounting overlayfs with data: {data}");
     Mount::builder()
         .fstype("overlay")
@@ -211,10 +217,33 @@ fn exec_command(exec_dir: &Utf8Path) -> Result<ExitStatus, ExecError> {
         .mount("/dev", new_dev)
         .map_err(|e| ExecError::Mount("dev".into(), e))?;
 
-    pivot_root(new_combined_root_dir.as_str(), new_combined_root_dir.join("old_root").as_str())
-        .map_err(|errno| ExecError::PivotRoot { new_root: new_combined_root_dir, old_root, errno })?;
+    pivot_root(
+        new_combined_root_dir.as_str(),
+        new_combined_root_dir.join("old_root").as_str(),
+    )
+    .map_err(|errno| ExecError::PivotRoot {
+        new_root: new_combined_root_dir,
+        old_root,
+        errno,
+    })?;
 
     // FIXME: remove old_root
+
+    // https://github.com/containers/bubblewrap/blob/9ca3b05ec787acfb4b17bed37db5719fa777834f/bubblewrap.c#L3405
+    mount(
+        Some("/old_root"),
+        "/old_root",
+        None::<&str>,
+        MsFlags::MS_SILENT | MsFlags::MS_REC | MsFlags::MS_PRIVATE,
+        None::<&str>,
+    )
+    .map_err(|e| ExecError::NixMount("old_root private".into(), e))?;
+
+    umount2(
+        "/old_root",
+        MntFlags::MNT_DETACH,
+    )
+    .map_err(|e| ExecError::NixMount("old_root umount".into(), e))?;
 
     // FIXME: Setup various namespaces.
 
