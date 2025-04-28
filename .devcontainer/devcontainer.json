@@ -19,6 +19,7 @@
   // Use 'mounts' to make the cargo cache persistent in a Docker Volume.
   "mounts": [
     "source=${localWorkspaceFolderBasename}-bashhistory,target=/commandhistory,type=volume",
+    "source=${localWorkspaceFolderBasename}-var-tmp,target=/var/tmp,type=volume",
     "source=${localEnv:HOME}/.ssh,target=/home/ubuntu/.ssh,type=bind,consistency=cached",
     "source=${localEnv:HOME}/.gitconfig,target=/home/ubuntu/.gitconfig,type=bind,consistency=cached"
   ],
