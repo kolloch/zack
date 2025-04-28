@@ -64,7 +64,11 @@ struct Exec {
 
 impl From<Exec> for zaun::Exec {
     fn from(Exec { cmd, args }: Exec) -> Self {
-        Self { cmd, args }
+        Self {
+            cmd,
+            args,
+            ..Default::default()
+        }
     }
 }
 

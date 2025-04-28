@@ -110,8 +110,8 @@ fn detect_workspace() -> Result<PathBuf, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::File;
     use std::fs;
+    use std::fs::File;
     use tempfile::TempDir;
 
     #[test]

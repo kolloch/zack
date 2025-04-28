@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fs::{File, create_dir_all};
 use std::io::Read;
 use std::os::fd::{BorrowedFd, RawFd};
@@ -26,6 +27,7 @@ pub mod identity;
 pub struct Exec {
     pub cmd: String,
     pub args: Vec<String>,
+    pub env: BTreeMap<String, String>,
 }
 
 impl Default for Exec {
@@ -33,6 +35,7 @@ impl Default for Exec {
         Self {
             cmd: "true".to_string(),
             args: Default::default(),
+            env: Default::default(),
         }
     }
 }
@@ -120,6 +123,7 @@ pub fn spawn(exec_dir: &Path, exec: &Exec) -> Result<(), SpawnError> {
         .env("HOME", "/root")
         .env("PATH", "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
         .env("RUST_LOG", "debug")
+        .envs(&exec.env)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());

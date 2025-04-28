@@ -1,11 +1,11 @@
 use anyhow::Context;
+use camino::Utf8Path;
 use dupe::{Dupe, OptionDupedExt};
 use starlark::environment::{FrozenModule, Globals, LibraryExtension, Module};
 use starlark::eval::{Evaluator, FileLoader};
 use starlark::syntax::{AstModule, Dialect, DialectTypes};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use camino::Utf8Path;
 use thiserror::Error;
 use tracing::debug;
 
@@ -94,7 +94,7 @@ impl FileLoader for Loader {
         debug!("Loading module {module_name:?} from {file_path:?}");
         let content = std::fs::read_to_string(file_path.as_str())
             .with_context(|| format!("while reading from {file_path:?}"))?;
-        let frozen= self.executor.execute(self, &file_path, content)?;
+        let frozen = self.executor.execute(self, &file_path, content)?;
 
         // This allows parallel loading of the same module which could be wasteful.
         let mut loaded = self.loaded.write().expect("to get lock");
