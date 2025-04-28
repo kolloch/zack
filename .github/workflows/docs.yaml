@@ -1,4 +1,4 @@
-name: docs deploy
+name: docs check
 
 on: [pull_request, merge_group, workflow_dispatch]
 
