@@ -21,7 +21,6 @@ use uuid::Uuid;
 mod subid;
 
 pub mod identity;
-pub mod mount;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Exec {
