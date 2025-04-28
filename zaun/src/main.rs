@@ -19,7 +19,7 @@ use thiserror::Error;
 use tracing::{debug, instrument};
 use tracing::{error, info};
 use zaun::identity::{Groups, NameAndId};
-use zaun::{EXEC_JSON_FILE_NAME, new_exec_dir};
+use zaun::{ACTION_JSON_FILE_NAME, new_exec_dir};
 
 #[derive(Debug, Clone, Bpaf)]
 #[bpaf(options, version)]
@@ -135,14 +135,14 @@ fn valid_overlayfs_path(path: &Utf8Path) -> Result<(), ExecError> {
 
 #[instrument]
 fn exec_command(exec_dir: &Utf8Path) -> Result<ExitStatus, ExecError> {
-    let exec_json = exec_dir.join(EXEC_JSON_FILE_NAME);
+    let exec_json = exec_dir.join(ACTION_JSON_FILE_NAME);
 
     let mut buffer = String::new();
     let mut file = std::fs::File::open(&exec_json).map_err(ExecError::ReadConfig)?;
     file.read_to_string(&mut buffer)
         .map_err(ExecError::ReadConfig)?;
 
-    let exec: zaun::Exec = serde_json::from_str(&buffer).map_err(ExecError::ParseConfig)?;
+    let action: zaun::Action = serde_json::from_str(&buffer).map_err(ExecError::ParseConfig)?;
 
     // FIXME: Change to the correct userid, groupid and capabilities.
 
@@ -162,9 +162,10 @@ fn exec_command(exec_dir: &Utf8Path) -> Result<ExitStatus, ExecError> {
 
     nix::unistd::sethostname("zack").map_err(ExecError::SetHostName)?;
 
-    fn create_dir(dir: Utf8PathBuf) -> anyhow::Result<Utf8PathBuf> {
-        std::fs::create_dir(&dir).with_context(|| format!("while creating {dir:?}"))?;
-        Ok(dir)
+    fn create_dir(dir: impl AsRef<Utf8Path>) -> anyhow::Result<Utf8PathBuf> {
+        let dir = dir.as_ref();
+        std::fs::create_dir(dir).with_context(|| format!("while creating {dir:?}"))?;
+        Ok(dir.to_path_buf())
     }
 
     let output_dir = create_dir(exec_dir.join("out"))?;
@@ -187,6 +188,10 @@ fn exec_command(exec_dir: &Utf8Path) -> Result<ExitStatus, ExecError> {
     let new_proc = root_sub_dir("proc")?;
     let new_sys = root_sub_dir("sys")?;
     let new_dev = root_sub_dir("dev")?;
+    // mounted later so that it is directly writeable
+    let build = root_sub_dir("build")?;
+    // we don't want this to be writeable but "indirectly" mounting it via overlayfs didn't work
+    let source = root_sub_dir("source")?;
 
     let build_root = Utf8PathBuf::from("/build-root");
 
@@ -196,11 +201,12 @@ fn exec_command(exec_dir: &Utf8Path) -> Result<ExitStatus, ExecError> {
     valid_overlayfs_path(&work_dir)?;
 
     let data = format!(
-        "userxattr,lowerdir={build_root}:{tmp_root_setup},upperdir={output_dir},workdir={work_dir}"
+        "userxattr,volatile,lowerdir={build_root}:{tmp_root_setup},upperdir={output_dir},workdir={work_dir}"
     );
     debug!("Mounting overlayfs with data: {data}");
     Mount::builder()
         .fstype("overlay")
+        .flags(MountFlags::REC)
         .data(&data)
         .mount("overlay", &new_combined_root_dir)
         .map_err(|e| ExecError::Mount(format!("overlayfs {data}"), e))?;
@@ -220,15 +226,27 @@ fn exec_command(exec_dir: &Utf8Path) -> Result<ExitStatus, ExecError> {
         .mount("/dev", new_dev)
         .map_err(|e| ExecError::Mount("dev".into(), e))?;
 
+    Mount::builder()
+        .flags(MountFlags::BIND | MountFlags::REC | MountFlags::RDONLY)
+        .mount(&action.source, &source)
+        .map_err(|e| ExecError::Mount(format!("source from {source} to {}", action.source), e))?;
+
+    Mount::builder()
+        .flags(MountFlags::BIND | MountFlags::REC)
+        .mount(&action.build, &build)
+        .map_err(|e| ExecError::Mount(format!("build {build} from {}", action.build), e))?;
+
     pivot_root(
         new_combined_root_dir.as_str(),
         new_combined_root_dir.join("old_root").as_str(),
     )
     .map_err(|errno| ExecError::PivotRoot {
-        new_root: new_combined_root_dir,
+        new_root: new_combined_root_dir.clone(),
         old_root,
         errno,
     })?;
+
+    info!("new_combined_root_dir: {new_combined_root_dir}");
 
     // FIXME: remove old_root
 
@@ -247,18 +265,24 @@ fn exec_command(exec_dir: &Utf8Path) -> Result<ExitStatus, ExecError> {
 
     // FIXME: Setup various namespaces.
 
-    let exit_status = Command::new(&exec.cmd)
-        .current_dir("/")
-        .args(&exec.args)
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .spawn()
-        .map_err(ExecError::Spawn)?
-        .wait()
-        .map_err(ExecError::Wait)?;
+    for exec in &action.exec_steps {
+        let exit_status = Command::new(&exec.cmd)
+            .current_dir("/source")
+            .args(&exec.args)
+            .stdin(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .map_err(ExecError::Spawn)?
+            .wait()
+            .map_err(ExecError::Wait)?;
 
-    Ok(exit_status)
+        if !exit_status.success() {
+            return Ok(exit_status);
+        }
+    }
+
+    Ok(ExitStatus::default())
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -371,7 +395,13 @@ fn main() -> Result<(), Error> {
     match &options.action {
         Action::Spawn { exec } => {
             let exec_dir = new_exec_dir();
-            zaun::spawn(exec_dir.as_std_path(), &exec.clone().into())?
+            zaun::spawn(
+                exec_dir.as_std_path(),
+                &zaun::Action {
+                    exec_steps: vec![exec.clone().into()],
+                    ..Default::default()
+                },
+            )?
         }
         Action::Exec { exec_dir } => {
             let exit_status = exec_command(exec_dir)?;

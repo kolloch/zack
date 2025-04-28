@@ -24,6 +24,25 @@ mod subid;
 pub mod identity;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Action {
+    /// source directory, logically read-only but we allow overlay writes right now.
+    pub source: Utf8PathBuf,
+    /// build directory, process is allowed to write here but only in declared paths. (not enforced at first)
+    pub build: Utf8PathBuf,
+    pub exec_steps: Vec<Exec>,
+}
+
+impl Default for Action {
+    fn default() -> Self {
+        Self {
+            source: directories::workspace_dir().to_owned(),
+            build: directories::build_dir().to_owned(),
+            exec_steps: vec![Exec::default()],
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Exec {
     pub cmd: String,
     pub args: Vec<String>,
@@ -94,21 +113,21 @@ fn zaun_exe() -> String {
     }
 }
 
-pub const EXEC_JSON_FILE_NAME: &str = "exec.json";
+pub const ACTION_JSON_FILE_NAME: &str = "action.json";
 
 /// Implementation of `zaun spawn`.
 /// Spans a `zaun exec` command in a new user namespace.
 #[instrument]
-pub fn spawn(exec_dir: &Path, exec: &Exec) -> Result<(), SpawnError> {
+pub fn spawn(exec_dir: &Path, action: &Action) -> Result<(), SpawnError> {
     let user_ns_fd = create_user_namespace().map_err(SpawnError::CreateUserNamespace)?;
 
     debug!("user_ns_fd: {user_ns_fd}");
 
     create_dir_all(exec_dir).map_err(SpawnError::CreateExecJson)?;
-    let exe_json_path = exec_dir.join(EXEC_JSON_FILE_NAME);
+    let exe_json_path = exec_dir.join(ACTION_JSON_FILE_NAME);
 
     let exe_json_file = File::create_new(&exe_json_path).map_err(SpawnError::CreateExecJson)?;
-    serde_json::to_writer_pretty(exe_json_file, &exec).map_err(SpawnError::WriteExecJson)?;
+    serde_json::to_writer_pretty(exe_json_file, &action).map_err(SpawnError::WriteExecJson)?;
 
     let zaun_exe = zaun_exe();
     info!("zaun_exe: {zaun_exe}");
@@ -122,8 +141,8 @@ pub fn spawn(exec_dir: &Path, exec: &Exec) -> Result<(), SpawnError> {
         .env("TERM", "xterm-256color")
         .env("HOME", "/root")
         .env("PATH", "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+        // FIXME:  Control by verbosity mode or similar?
         .env("RUST_LOG", "debug")
-        .envs(&exec.env)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
@@ -236,7 +255,13 @@ mod tests {
         let exec_dir = tempfile::tempdir().unwrap();
         spawn(
             exec_dir.as_ref(),
-            &Exec {
+            &Action {
+                // FIXME: no overlap
+                exec_steps: vec![Exec {
+                    cmd: "echo".to_string(),
+                    args: vec!["hello".to_string()],
+                    env: Default::default(),
+                }],
                 ..Default::default()
             },
         )

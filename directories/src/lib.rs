@@ -37,8 +37,8 @@ pub fn rules_dir() -> &'static Utf8Path {
     paths().rules.as_path()
 }
 
-pub fn out_dir() -> &'static Utf8Path {
-    paths().out.as_path()
+pub fn build_dir() -> &'static Utf8Path {
+    paths().build.as_path()
 }
 
 pub fn exec_directories() -> &'static Utf8Path {
@@ -50,7 +50,7 @@ struct WorkspacePaths {
     workspace: Utf8PathBuf,
     target: Utf8PathBuf,
     rules: Utf8PathBuf,
-    out: Utf8PathBuf,
+    build: Utf8PathBuf,
     exec: Utf8PathBuf,
 }
 
@@ -69,13 +69,16 @@ fn paths() -> &'static WorkspacePaths {
 
         let target = root.join("target").join("zack");
         let rules = target.join("rules");
-        let out = target.join("out");
+        std::fs::create_dir_all(&rules).unwrap();
+        let build = target.join("build");
+        std::fs::create_dir_all(&build).unwrap();
         let exec = target.join("exec");
+        std::fs::create_dir_all(&exec).unwrap();
         WorkspacePaths {
             workspace: root,
             target,
             rules,
-            out,
+            build,
             exec,
         }
     })
