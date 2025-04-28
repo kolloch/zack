@@ -1,15 +1,16 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 
 use anyhow::{Context, anyhow};
 use bpaf::Bpaf;
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
 use caps::errors::CapsError;
 use caps::{CapSet, Capability};
 use nix::errno::Errno;
 use nix::sched::{CloneFlags, unshare};
-use nix::unistd::gethostname;
+use nix::unistd::{gethostname, pivot_root};
+use once_cell::sync::Lazy;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use sys_mount::{Mount, MountFlags};
@@ -41,7 +42,7 @@ enum Action {
     #[bpaf(command)]
     Exec {
         #[bpaf(positional("EXEC_DIR"))]
-        exec_dir: PathBuf,
+        exec_dir: Utf8PathBuf,
     },
     /// Sets up a new user namespace with subid ranges.
     #[bpaf(command)]
@@ -105,10 +106,28 @@ pub enum ExecError {
     SetHostName(#[source] Errno),
     #[error("While mounting {0}: {1:?}")]
     Mount(String, #[source] std::io::Error),
+    #[error("Invalid path for overlayfs layer: {0:?}")]
+    InvalidOverlayfsLayerPath(Utf8PathBuf),
+    #[error("Could not pivot root to {new_root}, binding old root to {old_root}: {errno:?}")]
+    PivotRoot {
+        new_root: Utf8PathBuf,
+        old_root: Utf8PathBuf,
+        #[source]
+        errno: Errno,
+    },
+    #[error("{0}")]
+    Unclassified(#[from] anyhow::Error),
+}
+
+fn valid_overlayfs_path(path: &Utf8Path) -> Result<(), ExecError> {
+    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"/[a-z-A-Z0-9_/-]+").unwrap());
+    RE.is_match(path.as_str())
+        .then_some(())
+        .ok_or_else(|| ExecError::InvalidOverlayfsLayerPath(path.to_owned()))
 }
 
 #[instrument]
-fn exec_command(exec_dir: &Path) -> Result<ExitStatus, ExecError> {
+fn exec_command(exec_dir: &Utf8Path) -> Result<ExitStatus, ExecError> {
     let exec_json = exec_dir.join(EXEC_JSON_FILE_NAME);
 
     let mut buffer = String::new();
@@ -123,8 +142,9 @@ fn exec_command(exec_dir: &Path) -> Result<ExitStatus, ExecError> {
     let euid = nix::unistd::geteuid().as_raw();
     let egid = nix::unistd::getegid().as_raw();
     debug!("euid: {euid} egid: {egid}");
-    debug!("caps: {:?}", caps::all());
+    debug!("caps: {:?}", caps::read(None, CapSet::Effective));
 
+    // CLONE_NEWPID needs another fork.
     let flags = CloneFlags::CLONE_NEWNS
         | CloneFlags::CLONE_NEWIPC
         | CloneFlags::CLONE_NEWNET
@@ -135,40 +155,71 @@ fn exec_command(exec_dir: &Path) -> Result<ExitStatus, ExecError> {
 
     nix::unistd::sethostname("zack").map_err(ExecError::SetHostName)?;
 
-    let root = PathBuf::from("/build-root");
+    fn create_dir(dir: Utf8PathBuf) -> anyhow::Result<Utf8PathBuf> {
+        std::fs::create_dir(&dir).with_context(|| format!("while creating {dir:?}"))?;
+        Ok(dir)
+    }
+
+    let output_dir = create_dir(exec_dir.join("out"))?;
+    let work_dir = create_dir(exec_dir.join("work"))?;
+    let new_combined_root_dir = create_dir(exec_dir.join("root"))?;
+
+    let tmp_root_setup = Utf8PathBuf::from("/tmp");
+    let root_sub_dir = |name: &str| {
+        create_dir(tmp_root_setup.join(name))?;
+        Ok::<_,anyhow::Error>(new_combined_root_dir.join(name))
+    };
 
     Mount::builder()
-        .flags(MountFlags::BIND | MountFlags::REC | MountFlags::RDONLY)
-        .mount("/", "/")
-        .map_err(|e| ExecError::Mount("build-root".into(), e))?;
+        .fstype("tmpfs")
+        .data("size=10M")
+        .mount("tmpfs", &tmp_root_setup)
+        .map_err(|e| ExecError::Mount("tmpfs".into(), e))?;
 
-    // Mount::builder()
-    //     .flags(MountFlags::NOSUID | MountFlags::NOEXEC | MountFlags::NODEV | MountFlags::RELATIME)
-    //     .fstype("proc")
-    //     // .data("hidepid=2")
-    //     .mount("proc", root.join("proc"))
-    //     .map_err(|e| ExecError::Mount("proc".into(), e))?;
+    let old_root = root_sub_dir("old_root")?;
+    let new_proc = root_sub_dir("proc")?;
+    let new_sys = root_sub_dir("sys")?;
+    let new_dev = root_sub_dir("dev")?;
 
-    // FIXME: Better isolation
+    let build_root = Utf8PathBuf::from("/build-root");
+
+    valid_overlayfs_path(&build_root)?;
+    valid_overlayfs_path(&tmp_root_setup)?;
+    valid_overlayfs_path(&output_dir)?;
+    valid_overlayfs_path(&work_dir)?;
+
+    let data = format!("userxattr,lowerdir={build_root}:{tmp_root_setup},upperdir={output_dir},workdir={work_dir}");
+    debug!("Mounting overlayfs with data: {data}");
+    Mount::builder()
+        .fstype("overlay")
+        .data(&data)
+        .mount("overlay", &new_combined_root_dir)
+        .map_err(|e| ExecError::Mount(format!("overlayfs {data}"), e))?;
 
     Mount::builder()
-        .flags(MountFlags::BIND | MountFlags::REC | MountFlags::RDONLY)
-        .mount("/proc", root.join("proc"))
+        .flags(MountFlags::BIND | MountFlags::REC)
+        .mount("/proc", new_proc)
         .map_err(|e| ExecError::Mount("proc".into(), e))?;
 
     Mount::builder()
-        .flags(MountFlags::BIND | MountFlags::REC | MountFlags::RDONLY)
-        .mount("/sys", root.join("sys"))
+        .flags(MountFlags::BIND | MountFlags::REC)
+        .mount("/sys", new_sys)
         .map_err(|e| ExecError::Mount("sys".into(), e))?;
 
     Mount::builder()
         .flags(MountFlags::BIND | MountFlags::REC)
-        .mount("/dev", root.join("dev"))
+        .mount("/dev", new_dev)
         .map_err(|e| ExecError::Mount("dev".into(), e))?;
+
+    pivot_root(new_combined_root_dir.as_str(), new_combined_root_dir.join("old_root").as_str())
+        .map_err(|errno| ExecError::PivotRoot { new_root: new_combined_root_dir, old_root, errno })?;
+
+    // FIXME: remove old_root
 
     // FIXME: Setup various namespaces.
 
     let exit_status = Command::new(&exec.cmd)
+        .current_dir("/")
         .args(&exec.args)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())

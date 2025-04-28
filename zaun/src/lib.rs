@@ -13,7 +13,7 @@ use nix::libc::{setresgid, setresuid};
 use nix::sched::CloneFlags;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tracing::error;
+use tracing::{debug, error};
 use tracing::instrument;
 use tracing_log::log::info;
 use uuid::Uuid;
@@ -57,6 +57,7 @@ pub enum SpawnError {
     ProcessWait(#[from] std::io::Error),
 }
 
+#[instrument(ret)]
 fn zaun_exe() -> String {
     #[cfg(not(any(test, feature = "testing")))]
     {
@@ -73,12 +74,15 @@ fn zaun_exe() -> String {
     {
         use std::path::PathBuf;
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+        debug!("finding zaun executable in test mode. manifest_dir: {manifest_dir} current_dir: {:?}", std::env::current_dir());
         PathBuf::from(manifest_dir)
             .parent()
             .unwrap()
             .join("target")
             .join("debug")
             .join("zaun")
+            .canonicalize()
+            .expect("canonicalize failed")
             .to_str()
             .unwrap()
             .to_owned()
@@ -92,6 +96,8 @@ pub const EXEC_JSON_FILE_NAME: &str = "exec.json";
 #[instrument]
 pub fn spawn(exec_dir: &Path, exec: &Exec) -> Result<(), SpawnError> {
     let user_ns_fd = create_user_namespace().map_err(SpawnError::CreateUserNamespace)?;
+
+    debug!("user_ns_fd: {user_ns_fd}");
 
     create_dir_all(exec_dir).map_err(SpawnError::CreateExecJson)?;
     let exe_json_path = exec_dir.join(EXEC_JSON_FILE_NAME);
@@ -111,7 +117,7 @@ pub fn spawn(exec_dir: &Path, exec: &Exec) -> Result<(), SpawnError> {
         .env("TERM", "xterm-256color")
         .env("HOME", "/root")
         .env("PATH", "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
-        .current_dir(exec_dir)
+        .env("RUST_LOG", "debug")
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
@@ -127,8 +133,6 @@ pub fn spawn(exec_dir: &Path, exec: &Exec) -> Result<(), SpawnError> {
             })?;
 
             // If we don't set this before exec, the capabilities are reset.
-
-            // FIXME: Change to the correct userid, groupid and capabilities.
 
             let err = setresuid(0, 0, 0);
             if err != 0 {
@@ -181,7 +185,6 @@ fn create_user_namespace() -> Result<RawFd, CreateUserNamespaceError> {
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit());
 
-    eprintln!("Spawn command: {command:?}");
     let mut child = command
         .spawn()
         .map_err(CreateUserNamespaceError::SpawnSetupUserNs)?;
