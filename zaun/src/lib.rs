@@ -13,8 +13,8 @@ use nix::libc::{setresgid, setresuid};
 use nix::sched::CloneFlags;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tracing::{debug, error};
 use tracing::instrument;
+use tracing::{debug, error};
 use tracing_log::log::info;
 use uuid::Uuid;
 
@@ -74,7 +74,10 @@ fn zaun_exe() -> String {
     {
         use std::path::PathBuf;
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-        debug!("finding zaun executable in test mode. manifest_dir: {manifest_dir} current_dir: {:?}", std::env::current_dir());
+        debug!(
+            "finding zaun executable in test mode. manifest_dir: {manifest_dir} current_dir: {:?}",
+            std::env::current_dir()
+        );
         PathBuf::from(manifest_dir)
             .parent()
             .unwrap()

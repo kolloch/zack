@@ -7,8 +7,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use caps::errors::CapsError;
 use caps::{CapSet, Capability};
 use nix::errno::Errno;
-use nix::libc::umount;
-use nix::mount::{self, mount, umount2, MntFlags, MsFlags};
+use nix::mount::{MntFlags, MsFlags, mount, umount2};
 use nix::sched::{CloneFlags, unshare};
 use nix::unistd::{gethostname, pivot_root};
 use once_cell::sync::Lazy;
@@ -239,11 +238,8 @@ fn exec_command(exec_dir: &Utf8Path) -> Result<ExitStatus, ExecError> {
     )
     .map_err(|e| ExecError::NixMount("old_root private".into(), e))?;
 
-    umount2(
-        "/old_root",
-        MntFlags::MNT_DETACH,
-    )
-    .map_err(|e| ExecError::NixMount("old_root umount".into(), e))?;
+    umount2("/old_root", MntFlags::MNT_DETACH)
+        .map_err(|e| ExecError::NixMount("old_root umount".into(), e))?;
 
     // FIXME: Setup various namespaces.
 
