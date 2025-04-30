@@ -73,4 +73,4 @@ To unify source files/binary files one can do at least two things:
 3. Allow "manual" merging. One could supply an explicit option to symlink back an output
    in the source tree. One could explicitly chose the config here, defaulting to target/exec/host.
 
-   In that case, the same symlink would exist in the sandbox so that relative paths work.
+   In that case, the same symlink would exist in the sandbox so that relative paths work and IDE works.
