@@ -41,6 +41,11 @@ export default defineConfig({
                 collapsed: true,
                 autogenerate: { directory: 'other_build_systems' },
             },
+            {
+                label: 'Internal',
+                collapsed: true,
+                autogenerate: { directory: '10_internal' },
+            },
         ],
 		}), markdoc()],
 });
