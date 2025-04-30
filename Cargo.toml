@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["cli", "db", "loader", "rules", "directories", "zaun", "zopf"]
+members = ["cli", "db", "loader", "rules", "directories", "zaun", "zopf", "zisch"]
 
 [workspace.package]
 edition = "2024"
@@ -79,3 +79,7 @@ prop-test = "0.1.1"
 # compression
 zstd = "0.13.0"
 async-compression = { version = "0.4.22", features = ["zstd"] }
+
+dotenvy = "0.15"
+
+libsqlite3-sys = { version = "0.29", features = ["bundled"] }

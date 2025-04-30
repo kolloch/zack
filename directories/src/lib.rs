@@ -67,7 +67,7 @@ fn paths() -> &'static WorkspacePaths {
             .map_err(Error::NoUtf8)
             .unwrap();
 
-        let target = root.join("target").join("zack");
+        let target = root.join("zack");
         let rules = target.join("rules");
         std::fs::create_dir_all(&rules).unwrap();
         let build = target.join("build");
