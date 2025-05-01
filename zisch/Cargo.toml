@@ -8,5 +8,8 @@ rust-version.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
 thiserror.workspace = true
+camino.workspace = true
+blake3.workspace = true
 
 diesel.workspace = true
+libsqlite3-sys.workspace = true
