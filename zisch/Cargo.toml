@@ -12,9 +12,11 @@ camino.workspace = true
 blake3.workspace = true
 
 diesel.workspace = true
+sqlx.workspace = true
 libsqlite3-sys.workspace = true
 
 directories.workspace = true
 
 anymap.workspace = true
 ahash.workspace = true
+tokio.workspace = true

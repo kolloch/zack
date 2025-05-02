@@ -89,25 +89,25 @@ where
     }
 }
 
-impl<DB> ToSql<sql_types::Text, DB> for DbPathBuf
-where
-    DB: Backend,
-    String: ToSql<sql_types::Text, DB>,
-{
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> serialize::Result {
-        self.0.as_str().to_sql(out)
-    }
-}
+// impl<DB> ToSql<sql_types::Text, DB> for DbPathBuf
+// where
+//     DB: Backend,
+//     String: ToSql<sql_types::Text, DB>,
+// {
+//     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> serialize::Result {
+//         self.0.as_str().to_sql(out)
+//     }
+// }
 
-impl<DB> ToSql<sql_types::Binary, DB> for Hash
-where
-    DB: Backend,
-{
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> serialize::Result {
-        out.write_all(self.internal.as_bytes())?;
-        Ok(serialize::IsNull::No)
-    }
-}
+// impl<DB> ToSql<sql_types::Binary, DB> for Hash
+// where
+//     DB: Backend,
+// {
+//     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> serialize::Result {
+//         out.write_all(self.internal.as_bytes())?;
+//         Ok(serialize::IsNull::No)
+//     }
+// }
 
 impl<DB> FromSql<sql_types::Integer, DB> for FileId
 where
