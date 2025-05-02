@@ -1,12 +1,17 @@
 [workspace]
 resolver = "2"
-members = ["cli", "db", "loader", "rules", "directories", "zaun", "zopf", "zisch"]
+members = ["cli", "loader", "rules", "directories", "zaun", "zopf", "zisch"]
 
 [workspace.package]
 edition = "2024"
 rust-version = "1.85.0"
 
 [workspace.dependencies]
+
+# workspace
+directories = { path = "directories" }
+zaun = { path = "zaun" }
+
 starlark = { version = "0.13.0" }
 
 include_dir = "0.7.4"
@@ -28,6 +33,7 @@ cjson = "0.1.2"
 # data structures
 # https://docs.rs/ahash/latest/ahash/
 ahash = "0.8.11"
+anymap = "1.0.0-beta.2" 
 
 # error handling
 thiserror = "2.0.11"
@@ -67,7 +73,7 @@ ratatui = "0.29.0"
 # https://github.com/a-kenji/tui-term
 
 # db
-diesel = { version = "2.2.8", features = ["sqlite"] }
+diesel = { version = "2.2.8", features = ["sqlite", "returning_clauses_for_sqlite_3_35"] }
 
 # sync / parallelize
 rayon = "1.10"

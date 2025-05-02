@@ -2,14 +2,14 @@
 
 diesel::table! {
     build_configs (id) {
-        id -> Nullable<Integer>,
+        id -> Integer,
         name -> Text,
     }
 }
 
 diesel::table! {
     files (id) {
-        id -> Nullable<Integer>,
+        id -> Integer,
         build_config_id -> Nullable<Integer>,
         rel_path -> Text,
         content_hash -> Binary,

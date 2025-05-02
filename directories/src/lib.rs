@@ -45,6 +45,10 @@ pub fn exec_directories() -> &'static Utf8Path {
     paths().exec.as_path()
 }
 
+pub fn db() -> &'static Utf8Path {
+    paths().db.as_path()
+}
+
 #[derive(Debug)]
 struct WorkspacePaths {
     workspace: Utf8PathBuf,
@@ -52,6 +56,7 @@ struct WorkspacePaths {
     rules: Utf8PathBuf,
     build: Utf8PathBuf,
     exec: Utf8PathBuf,
+    db: Utf8PathBuf,
 }
 
 fn paths() -> &'static WorkspacePaths {
@@ -74,12 +79,14 @@ fn paths() -> &'static WorkspacePaths {
         std::fs::create_dir_all(&build).unwrap();
         let exec = target.join("exec");
         std::fs::create_dir_all(&exec).unwrap();
+        let db = target.join("db.sqlite");
         WorkspacePaths {
             workspace: root,
             target,
             rules,
             build,
             exec,
+            db,
         }
     })
 }

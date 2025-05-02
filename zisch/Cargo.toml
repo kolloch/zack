@@ -13,3 +13,8 @@ blake3.workspace = true
 
 diesel.workspace = true
 libsqlite3-sys.workspace = true
+
+directories.workspace = true
+
+anymap.workspace = true
+ahash.workspace = true
