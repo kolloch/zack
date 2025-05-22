@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{Context, Result, anyhow};
-use anymap::AnyMap;
+use anymap2::AnyMap;
 use migration::MigratorTrait;
 use sea_orm::{Database, DatabaseConnection};
 use url::Url;

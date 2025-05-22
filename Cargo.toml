@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["cli", "directories", "loader", "migration", "rules", "zaun", "zopf", "zisch"]
+members = ["cli", "directories", "loader", "migration", "rules", "zaun", "zopf", "zisch", "exec"]
 
 [workspace.package]
 edition = "2024"
@@ -13,6 +13,7 @@ directories = { path = "directories" }
 zaun = { path = "zaun" }
 migration = { path = "migration" }
 
+allocative = { version = "0.3" }
 starlark = { version = "0.13.0" }
 
 include_dir = "0.7.4"
@@ -34,7 +35,7 @@ cjson = "0.1.2"
 # data structures
 # https://docs.rs/ahash/latest/ahash/
 ahash = "0.8.11"
-anymap = "1.0.0-beta.2" 
+anymap2 = "0.13.0"
 
 # error handling
 thiserror = "2.0.11"
