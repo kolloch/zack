@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["cli", "directories", "loader", "migration", "rules", "zaun", "zopf", "zisch", "exec"]
+members = ["cli", "directories", "loader", "migration", "rules", "zaun", "zopf", "zisch", "exec", "zwischen"]
 
 [workspace.package]
 edition = "2024"
