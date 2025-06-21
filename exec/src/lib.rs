@@ -1,9 +1,5 @@
-use std::cell::RefCell;
-
 use allocative::Allocative;
-use serde::{Deserialize, Serialize};
-use starlark::{any::ProvidesStaticType};
-
+use starlark::any::ProvidesStaticType;
 
 #[derive(Debug, ProvidesStaticType, Allocative)]
 pub struct BuildContext {
