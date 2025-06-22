@@ -61,12 +61,24 @@ RUN make
 USER root
 RUN make install
 
+FROM builder AS cargo_binstall
+
+USER ubuntu
+ADD --chown=ubuntu --link \
+    https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh \
+    /tmp/install.sh
+RUN ls -al /tmp/install.sh &&bash /tmp/install.sh
+# => Creates /root/.cargo/bin/cargo-binstall
+
 FROM builder AS rustup
 
 USER ubuntu
 
 RUN curl https://sh.rustup.rs -sSf | \
     sh -s -- --default-toolchain stable -y
+COPY --chown=ubuntu --link --from=cargo_binstall \
+    /home/ubuntu/.cargo/bin/cargo-binstall \
+    /home/ubuntu/.cargo/bin/cargo-binstall
 
 FROM builder AS nvm
 
@@ -79,8 +91,8 @@ FROM builder AS build-root
 
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
-          debootstrap && \
-            rm -rf /var/lib/apt/lists/*
+    debootstrap && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN debootstrap --variant=minbase  --include=build-essential,git,curl noble /build-root && \
     rm -rf /build-root/var/cache && \
@@ -145,6 +157,9 @@ COPY --chown=ubuntu --link --from=rustup /home/ubuntu/.cargo /home/ubuntu/.cargo
 COPY --chown=ubuntu --link --from=rustup /home/ubuntu/.rustup /home/ubuntu/.rustup
 USER ubuntu
 RUN echo '. "$HOME/.cargo/env"' >>.bashrc
+
+RUN "$HOME/.cargo/bin/cargo" binstall --strategies crate-meta-data jj-cli
+RUN echo 'source <(COMPLETE=bash jj)' >> ~/.bashrc
 
 # Generate certificates in ~/.mitmproxy
 RUN mitmdump -r /dev/null -n
