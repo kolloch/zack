@@ -1,0 +1,34 @@
+[package]
+name = "playground"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+tracing.workspace = true
+tracing-log.workspace = true
+tracing-subscriber.workspace = true
+camino.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+bpaf.workspace = true
+cgroups = "0.1.0"
+cgroups-rs = "0.3.4"
+nix.workspace = true
+caps.workspace = true
+sys-mount.workspace = true
+tempfile.workspace = true
+uuid.workspace = true
+once_cell.workspace = true
+regex.workspace = true
+
+anyhow.workspace = true
+thiserror.workspace = true
+
+indoc.workspace = true
+
+
+allocative.workspace = true
+derive_more.workspace = true
+either.workspace = true
+starlark.workspace = true
