@@ -1,6 +1,17 @@
 [workspace]
 resolver = "2"
-members = ["cli", "directories", "loader", "migration", "rules", "zaun", "zopf", "zisch", "exec", "zwischen"]
+members = [
+    "cli",
+    "directories",
+    "loader",
+    "migration",
+    "rules",
+    "zaun",
+    "zopf",
+    "zisch",
+    "exec",
+    "zwischen",
+]
 
 [workspace.package]
 edition = "2024"
@@ -26,7 +37,7 @@ uuid = { version = "1.13.2", features = ["serde", "v4", "v7"] }
 camino = { version = "1.1.9", features = ["serde1", "proptest1"] }
 
 # serialization
-serde = { version = "1.0.218", features = ["derive"]}
+serde = { version = "1.0.218", features = ["derive"] }
 serde_json = "1.0.139"
 # https://github.com/engineerd/cjson
 # Alternative: https://github.com/Internet-of-People/iop-rs/tree/develop/json-digest
@@ -42,7 +53,16 @@ thiserror = "2.0.11"
 anyhow = "1.0.96"
 
 # system
-nix = { version = "0.29" , features = ["mount", "fs", "fanotify", "inotify", "resource", "sched", "user", "hostname"]}
+nix = { version = "0.29", features = [
+    "mount",
+    "fs",
+    "fanotify",
+    "inotify",
+    "resource",
+    "sched",
+    "user",
+    "hostname",
+] }
 sys-mount = { version = "3" }
 caps = "0.5.5"
 
@@ -50,7 +70,7 @@ caps = "0.5.5"
 ignore = { version = "0.4", features = ["simd-accel"] }
 
 # crypto
-blake3 = { version = "1.8" , features = ["serde", "rayon"]}
+blake3 = { version = "1.8", features = ["serde", "rayon"] }
 
 # utility
 dupe = "0.9.1"
@@ -87,9 +107,34 @@ async-compression = { version = "0.4.22", features = ["zstd"] }
 
 dotenvy = "0.15"
 
-sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "derive", "migrate", "uuid"] }
-sea-orm = { version = "1.1.0", features = ["sqlx-sqlite", "runtime-tokio-rustls", "macros", "with-chrono", "with-time", "with-json", "with-uuid" ] }
-sea-orm-migration = { version = "1.1.0", features = ["sqlx-sqlite", "runtime-tokio-rustls" ] }
+sqlx = { version = "0.8", features = [
+    "runtime-tokio",
+    "sqlite",
+    "derive",
+    "migrate",
+    "uuid",
+] }
+sea-orm = { version = "1.1.0", features = [
+    "sqlx-sqlite",
+    "runtime-tokio-rustls",
+    "macros",
+    "with-chrono",
+    "with-time",
+    "with-json",
+    "with-uuid",
+] }
+sea-orm-migration = { version = "1.1.0", features = [
+    "sqlx-sqlite",
+    "runtime-tokio-rustls",
+] }
 
 tokio = { version = "1.44.2", features = ["full"] }
 async-std = { version = "1", features = ["attributes", "tokio1"] }
+
+# Calling cargo
+escargot = "0.5.15"
+
+# testing
+assert-cmd = "2.0.17"
+assert-fs = "1.1.3"
+predicates = "3.13"
