@@ -2,10 +2,12 @@
 //! Using the `newuidmap` and `newgidmap` commands.
 
 use std::{
+    fmt::Display,
     io::BufRead,
     path::{Path, PathBuf},
 };
 
+use derive_more::Display;
 use nix::errno::Errno;
 use thiserror::Error;
 use tracing::instrument;
@@ -64,12 +66,13 @@ pub enum Error {
 type Result<T> = std::result::Result<T, Error>;
 
 /// Mockable file opener for testing.
-pub trait FileOpener: std::fmt::Debug {
+pub trait FileOpener: std::fmt::Debug + Display {
     fn open(&self, path: impl AsRef<Path>) -> Result<Box<dyn BufRead>>;
 }
 
 /// Default file opener that uses the standard library to open files.
-#[derive(Debug)]
+#[derive(Debug, Display)]
+#[display("{SUBUID_FILE},{SUBGID_FILE}")]
 pub struct StdFileOpener;
 
 impl FileOpener for StdFileOpener {
@@ -82,7 +85,12 @@ impl FileOpener for StdFileOpener {
 }
 
 /// Represents a UID/GID range mapping between the inner and the parent user namespace.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Display)]
+#[display(
+    "outer {outside_id}:{} -> inner {inside_id}:{} ({count})",
+    self.outside_id_end(),
+    self.inside_id_end()
+)]
 pub struct IdRange {
     outside_id: u32,
     inside_id: u32,
@@ -90,6 +98,14 @@ pub struct IdRange {
 }
 
 impl IdRange {
+    pub fn outside_id_end(&self) -> u32 {
+        self.outside_id + self.count - 1
+    }
+
+    pub fn inside_id_end(&self) -> u32 {
+        self.inside_id + self.count - 1
+    }
+
     #[instrument]
     pub fn call_newuidmap(&self, pid: u32) -> Result<()> {
         self.call_newidmap("newuidmap", pid)
@@ -131,7 +147,8 @@ const SUBUID_FILE: &str = "/etc/subuid";
 const SUBGID_FILE: &str = "/etc/subgid";
 
 /// Finds matching id map ranges from system config files.
-#[derive(Debug)]
+#[derive(Debug, Display)]
+#[display("IdMapper for {user} via {file_opener}")]
 pub struct IdMapMatcher<FO: FileOpener = StdFileOpener> {
     user: NameAndId,
     file_opener: FO,
@@ -224,7 +241,8 @@ impl<FO: FileOpener> IdMapMatcher<FO> {
 mod tests {
     use super::*;
 
-    #[derive(Debug)]
+    #[derive(Debug, Display)]
+    #[display("FakeFileOpener")]
     struct FakeFileOpener {
         subuid: String,
         subgid: String,

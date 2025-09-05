@@ -31,6 +31,8 @@ tempfile.workspace = true
 uuid.workspace = true
 once_cell.workspace = true
 regex.workspace = true
+
+derive_more.workspace = true
 # clone3 = "0.2.3"
 # https://youki-dev.github.io/youki/user/libcgroups.html
 # https://youki-dev.github.io/youki/developer/libcgroups.html

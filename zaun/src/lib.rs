@@ -19,6 +19,8 @@ use tracing::{debug, error};
 use tracing_log::log::info;
 use uuid::Uuid;
 
+mod named;
+mod ops;
 mod subid;
 
 pub mod identity;
@@ -78,6 +80,7 @@ pub enum SpawnError {
     ProcessWait(#[from] std::io::Error),
 }
 
+/// The path to the zaun executable.
 #[instrument(ret)]
 fn zaun_exe() -> String {
     #[cfg(not(any(test, feature = "testing")))]
@@ -116,6 +119,7 @@ fn zaun_exe() -> String {
 pub const ACTION_JSON_FILE_NAME: &str = "action.json";
 
 /// Implementation of `zaun spawn`.
+///
 /// Spans a `zaun exec` command in a new user namespace.
 #[instrument]
 pub fn spawn(exec_dir: &Path, action: &Action) -> Result<(), SpawnError> {
