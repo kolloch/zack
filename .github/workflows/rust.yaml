@@ -21,7 +21,7 @@ jobs:
       - run: rustup toolchain install stable --profile minimal --no-self-update
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@v2.8.0
+        uses: Swatinem/rust-cache@v2.8.1
 
       - run: |
           cargo check
