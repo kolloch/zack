@@ -152,10 +152,7 @@ pub fn spawn(exec_dir: &Path, action: &Action) -> Result<(), SpawnError> {
             nix::sched::setns(
                 BorrowedFd::borrow_raw(user_ns_fd),
                 CloneFlags::CLONE_NEWUSER,
-            )
-            .map_err(|e| {
-                std::io::Error::other(anyhow!("while setns to existing user namespace: {e}"))
-            })?;
+            )?;
 
             // If we don't set this before exec, the capabilities are reset.
 
