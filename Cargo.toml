@@ -82,7 +82,7 @@ dupe = "0.9.1"
 quote = "1.0.38"
 tempfile = "3.17.1"
 regex = "1"
-indoc = "1"
+indoc = "2"
 derive_more = { version = "2", features = ["full"] }
 either = "1"
 
