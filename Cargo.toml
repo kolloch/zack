@@ -46,7 +46,7 @@ serde_json = "1.0.139"
 # Alternative: https://github.com/Internet-of-People/iop-rs/tree/develop/json-digest
 cjson = "0.1.2"
 prost = { version = "0.14.1", features = ["codegen"] }
-bincode = { version = "2.0.1", features = ["serde"] }
+bincode = { version = "3.0.0", features = ["serde"] }
 
 # data structures
 # https://docs.rs/ahash/latest/ahash/
