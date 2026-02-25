@@ -96,7 +96,7 @@ bpaf = { version = "0.9.16", features = ["derive"] }
 
 # tui
 # https://github.com/ratatui/ratatui
-ratatui = "0.29.0"
+ratatui = "0.30.0"
 # Colored command output
 # https://github.com/ratatui/ansi-to-tui
 # vterm widget for ratatui:
