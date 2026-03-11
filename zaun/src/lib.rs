@@ -19,7 +19,12 @@ use tracing::{debug, error};
 use tracing_log::log::info;
 use uuid::Uuid;
 
+use crate::nix_ops::NixOpen;
+use crate::ops::ZaunExec;
+use crate::subid::ops::{GetGidRange, GetIdMapMatcher, GetUidRange, IdMapCommand, NewIdMapCommand};
+
 mod named;
+mod nix_ops;
 mod ops;
 mod subid;
 
@@ -202,11 +207,7 @@ pub enum CreateUserNamespaceError {
 /// Create a new user namespace, sets up the subuid and subgid ranges
 /// and returns the file descriptor to the new user namespace.
 #[instrument]
-fn create_user_namespace() -> Result<RawFd, CreateUserNamespaceError> {
-    let id_map_reader = subid::IdMapMatcher::new_for_current_user()?;
-    let uid_map = id_map_reader.get_matching_uid_map(1000)?;
-    let gid_map = id_map_reader.get_matching_gid_map(1000)?;
-
+fn create_user_namespace() -> anyhow::Result<RawFd> {
     let mut command = Command::new(zaun_exe());
     let command = command
         .arg("setup-user-ns")
@@ -220,22 +221,40 @@ fn create_user_namespace() -> Result<RawFd, CreateUserNamespaceError> {
 
     let mut out = child.stdout.take().expect("stdout is not set");
 
+    let mut exec = ZaunExec::default();
+
+    let get_id_map_matcher = GetIdMapMatcher;
+    let id_map_matcher = exec.execute(&get_id_map_matcher)?;
+    let get_uid_range = GetUidRange(&id_map_matcher, 1000);
+    let uid_range = exec.execute(&get_uid_range)?;
+    let get_gid_range = GetGidRange(&id_map_matcher, 1000);
+    let gid_range = exec.execute(&get_gid_range)?;
+
     let buf = &mut [0; 1];
     out.read_exact(buf)
         .map_err(CreateUserNamespaceError::ReadSetupSyncByte)?;
 
-    uid_map.call_newuidmap(child.id())?;
-    gid_map.call_newgidmap(child.id())?;
+    let new_uid_map = NewIdMapCommand {
+        command: IdMapCommand::NewUidMap,
+        range: &uid_range,
+        pid: child.id(),
+    };
+    exec.execute(&new_uid_map)?;
+    let new_gid_map = NewIdMapCommand {
+        command: IdMapCommand::NewGidMap,
+        range: &gid_range,
+        pid: child.id(),
+    };
+    exec.execute(&new_gid_map)?;
 
     let stdin = child.stdin.take().expect("stdin is not set");
 
-    // open its namespace FD
-    let ns_fd = nix::fcntl::open(
-        format!("/proc/{}/ns/user", child.id()).as_str(),
-        nix::fcntl::OFlag::O_RDONLY | nix::fcntl::OFlag::O_CLOEXEC,
-        nix::sys::stat::Mode::empty(),
-    )
-    .map_err(CreateUserNamespaceError::OpenUserNamespaceFile)?;
+    let open_user_namespace_fd = NixOpen {
+        path: format!("/proc/{}/ns/user", child.id()),
+        flags: nix::fcntl::OFlag::O_RDONLY | nix::fcntl::OFlag::O_CLOEXEC,
+        mode: nix::sys::stat::Mode::empty(),
+    };
+    let ns_fd = exec.execute(&open_user_namespace_fd)?;
 
     std::mem::drop(stdin);
 

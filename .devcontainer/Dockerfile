@@ -172,3 +172,4 @@ RUN update-ca-certificates
 COPY --link --from=build-root /build-root /build-root
 
 USER ubuntu
+RUN nvm install node

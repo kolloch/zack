@@ -14,6 +14,8 @@ use tracing::instrument;
 
 use crate::identity::NameAndId;
 
+pub(crate) mod ops;
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum UserNameOrId {
     Name(String),
@@ -104,16 +106,6 @@ impl IdRange {
 
     pub fn inside_id_end(&self) -> u32 {
         self.inside_id + self.count - 1
-    }
-
-    #[instrument]
-    pub fn call_newuidmap(&self, pid: u32) -> Result<()> {
-        self.call_newidmap("newuidmap", pid)
-    }
-
-    #[instrument]
-    pub fn call_newgidmap(&self, pid: u32) -> Result<()> {
-        self.call_newidmap("newgidmap", pid)
     }
 
     #[instrument]

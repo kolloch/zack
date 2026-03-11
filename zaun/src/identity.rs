@@ -6,6 +6,8 @@ use nix::{
 };
 use serde::{Deserialize, Serialize};
 
+pub(crate) mod ops;
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct NameAndId {
     pub name: Option<String>,
