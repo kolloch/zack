@@ -202,12 +202,14 @@ pub enum CreateUserNamespaceError {
     OpenUserNamespaceFile(#[source] Errno),
     #[error("While stopping setup-user-ns: {0:?}")]
     StoppingSetupUserNs(#[source] std::io::Error),
+    #[error("While executing operation: {0:#}")]
+    OpExecution(#[from] anyhow::Error),
 }
 
 /// Create a new user namespace, sets up the subuid and subgid ranges
 /// and returns the file descriptor to the new user namespace.
 #[instrument]
-fn create_user_namespace() -> anyhow::Result<RawFd> {
+fn create_user_namespace() -> Result<RawFd, CreateUserNamespaceError> {
     let mut command = Command::new(zaun_exe());
     let command = command
         .arg("setup-user-ns")
