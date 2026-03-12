@@ -23,8 +23,8 @@ struct Opts {
     /// Command to execute inside the overlay
     #[bpaf(positional("CMD"))]
     cmd: String,
-    /// Arguments forwarded to CMD
-    #[bpaf(positional("ARGS"))]
+    /// Arguments forwarded to CMD (flags like -c are passed through as-is)
+    #[bpaf(any("ARGS", |s: String| Some(s)))]
     args: Vec<String>,
 }
 
@@ -60,32 +60,26 @@ fn detect_workspace() -> Result<PathBuf> {
 // Namespace helpers
 // ---------------------------------------------------------------------------
 
-/// Create a new **user namespace** (so we gain `CAP_SYS_ADMIN` inside it) and
-/// immediately afterwards a new **mount namespace** so we can set up overlayfs
-/// without affecting the host.
-fn setup_namespaces() -> Result<()> {
-    let uid = nix::unistd::getuid().as_raw();
-    let gid = nix::unistd::getgid().as_raw();
+/// Create a private **mount namespace** so overlay mounts are invisible to the
+/// rest of the system and are cleaned up automatically when the process exits.
+///
+/// Requires `CAP_SYS_ADMIN` in the initial user namespace – run with `sudo`.
+fn setup_mount_namespace() -> Result<()> {
+    debug!("Creating private mount namespace");
 
-    debug!("Creating user namespace (outer uid={uid}, gid={gid})");
+    unshare(CloneFlags::CLONE_NEWNS).map_err(|e| {
+        if e == nix::errno::Errno::EPERM {
+            anyhow::anyhow!(
+                "unshare(CLONE_NEWNS) failed with EPERM – \
+                 fanotify and overlay mounts require CAP_SYS_ADMIN in the \
+                 initial user namespace. Try running with `sudo`."
+            )
+        } else {
+            anyhow::anyhow!("unshare(CLONE_NEWNS): {e}")
+        }
+    })?;
 
-    unshare(CloneFlags::CLONE_NEWUSER)
-        .map_err(|e| anyhow::anyhow!("unshare(CLONE_NEWUSER): {e}"))?;
-
-    // Must deny setgroups before writing gid_map (kernel requirement).
-    std::fs::write("/proc/self/setgroups", "deny")
-        .context("writing deny to /proc/self/setgroups")?;
-
-    std::fs::write("/proc/self/uid_map", format!("0 {uid} 1\n"))
-        .context("writing /proc/self/uid_map")?;
-    std::fs::write("/proc/self/gid_map", format!("0 {gid} 1\n"))
-        .context("writing /proc/self/gid_map")?;
-
-    debug!("User namespace configured – creating mount namespace");
-
-    unshare(CloneFlags::CLONE_NEWNS).map_err(|e| anyhow::anyhow!("unshare(CLONE_NEWNS): {e}"))?;
-
-    debug!("Namespaces ready");
+    debug!("Mount namespace ready");
     Ok(())
 }
 
@@ -102,6 +96,9 @@ struct Overlay {
 
 /// Mount an overlayfs whose **lower** (read‑only) layer is the workspace.
 /// Writes go to an ephemeral upper layer inside a temporary directory.
+///
+/// The temporary directory lives in `/tmp` which is already a tmpfs mount,
+/// so the upper and work dirs are always on a kernel-native filesystem.
 fn setup_overlayfs(workspace: &Path) -> Result<Overlay> {
     let tmpdir = TempDir::new().context("creating temp dir for overlayfs")?;
 
@@ -114,7 +111,7 @@ fn setup_overlayfs(workspace: &Path) -> Result<Overlay> {
     std::fs::create_dir_all(&merged).context("creating merged dir")?;
 
     let data = format!(
-        "userxattr,lowerdir={},upperdir={},workdir={}",
+        "lowerdir={},upperdir={},workdir={}",
         workspace.display(),
         upper.display(),
         work.display(),
@@ -152,12 +149,24 @@ fn teardown_overlayfs(overlay: &Overlay) {
 // ---------------------------------------------------------------------------
 
 /// Initialise fanotify and mark the given mount for open / close‑write events.
+///
+/// Requires `CAP_SYS_ADMIN` in the initial user namespace (i.e. `sudo`).
 fn setup_fanotify(mount_point: &Path) -> Result<Fanotify> {
     let fan = Fanotify::init(
         InitFlags::FAN_CLASS_NOTIF | InitFlags::FAN_CLOEXEC | InitFlags::FAN_NONBLOCK,
         EventFFlags::O_RDONLY | EventFFlags::O_LARGEFILE | EventFFlags::O_CLOEXEC,
     )
-    .context("fanotify_init")?;
+    .map_err(|e| {
+        if e == nix::errno::Errno::EPERM {
+            anyhow::anyhow!(
+                "fanotify_init failed with EPERM – \
+                 fanotify requires CAP_SYS_ADMIN in the initial user namespace. \
+                 Try running with `sudo`."
+            )
+        } else {
+            anyhow::anyhow!("fanotify_init: {e}")
+        }
+    })?;
 
     fan.mark(
         MarkFlags::FAN_MARK_ADD | MarkFlags::FAN_MARK_MOUNT,
@@ -165,7 +174,12 @@ fn setup_fanotify(mount_point: &Path) -> Result<Fanotify> {
         None::<i32>,
         Some(mount_point),
     )
-    .context("fanotify_mark on overlay mount")?;
+    .with_context(|| {
+        format!(
+            "fanotify_mark on overlay mount at {}",
+            mount_point.display()
+        )
+    })?;
 
     info!("Fanotify watching mount at {}", mount_point.display());
     Ok(fan)
@@ -237,13 +251,19 @@ fn run(opts: Opts) -> Result<ExitCode> {
     let workspace = detect_workspace()?;
     info!("Workspace root: {}", workspace.display());
 
-    // 2. Enter user + mount namespaces so we can mount without real root.
-    setup_namespaces()?;
+    // 2. Enter a private mount namespace so overlay mounts stay local to this
+    //    process and are cleaned up on exit.  Requires real CAP_SYS_ADMIN
+    //    (i.e. `sudo`) – no user-namespace tricks here because both
+    //    fanotify_init and fanotify_mark(FAN_MARK_MOUNT) call capable() against
+    //    the initial user namespace and would EPERM inside a sub-namespace.
+    setup_mount_namespace()?;
 
     // 3. Mount overlayfs (workspace = lower / read-only layer).
     let overlay = setup_overlayfs(&workspace)?;
 
     // 4. Set up fanotify on the overlay mount.
+    //    The overlay is a kernel-native VFS mount (not virtiofs/FUSE), so
+    //    fsnotify hooks fire correctly even though the lower layer is virtiofs.
     let fan = setup_fanotify(&overlay.mount_point)?;
 
     // 5. Spawn the requested command inside the overlay.
