@@ -1,0 +1,16 @@
+[package]
+name = "hideo"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+camino = { workspace = true }
+nix = { workspace = true, features = ["poll"] }
+sys-mount = { workspace = true }
+bpaf = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tempfile = { workspace = true }

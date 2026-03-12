@@ -13,7 +13,7 @@ members = [
     "exec",
     "zwischen",
     "zwirn",
-    "zwischen",
+    "zwischen", "hideo",
 ]
 
 [workspace.package]
