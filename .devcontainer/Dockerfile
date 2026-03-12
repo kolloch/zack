@@ -84,8 +84,12 @@ FROM builder AS nvm
 
 USER ubuntu
 
+ENV NVM_DIR=/home/ubuntu/.nvm
+
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | \
-    bash
+    bash && \
+    . $NVM_DIR/nvm.sh && \
+    nvm install node
 
 FROM builder AS build-root
 
@@ -98,7 +102,7 @@ RUN debootstrap --variant=minbase  --include=build-essential,git,curl noble /bui
     rm -rf /build-root/var/cache && \
     mkdir /build-root/var/cache
 
-FROM builder
+FROM builder AS composed
 
 RUN yes | unminimize
 
@@ -155,6 +159,12 @@ COPY --chown=ubuntu --link --from=nvm /home/ubuntu/.nvm /home/ubuntu/.nvm
 COPY --chown=ubuntu --link --from=nvm /home/ubuntu/.bashrc /home/ubuntu/.bashrc
 COPY --chown=ubuntu --link --from=rustup /home/ubuntu/.cargo /home/ubuntu/.cargo
 COPY --chown=ubuntu --link --from=rustup /home/ubuntu/.rustup /home/ubuntu/.rustup
+
+# Create an nvm wrapper so `nvm` works as a real command in non-interactive
+# shells (e.g. the RUN step devpod auto-injects: `RUN nvm install node`).
+RUN printf '#!/bin/bash\nexport NVM_DIR="/home/ubuntu/.nvm"\n[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"\nnvm "$@"\n' \
+    > /usr/local/bin/nvm && chmod +x /usr/local/bin/nvm
+
 USER ubuntu
 RUN echo '. "$HOME/.cargo/env"' >>.bashrc
 
