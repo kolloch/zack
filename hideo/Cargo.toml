@@ -10,6 +10,8 @@ thiserror = { workspace = true }
 camino = { workspace = true }
 nix = { workspace = true, features = ["poll"] }
 sys-mount = { workspace = true }
+fuser = { workspace = true }
+libc = { workspace = true }
 bpaf = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

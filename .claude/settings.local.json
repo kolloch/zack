@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo check --bin fuse_experiment)",
+      "Bash(sudo apt-get update -qq)",
+      "Bash(sudo apt-get install -y -qq pkg-config libfuse3-dev)",
+      "Bash(cargo check -p hideo)"
+    ]
+  }
+}
