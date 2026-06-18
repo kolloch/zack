@@ -117,7 +117,7 @@ async-compression = { version = "0.4.22", features = ["zstd"] }
 
 dotenvy = "0.15"
 
-sqlx = { version = "0.8", features = [
+sqlx = { version = "0.9", features = [
     "runtime-tokio",
     "sqlite",
     "derive",
