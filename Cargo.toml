@@ -69,7 +69,7 @@ nix = { version = "0.29", features = [
     "hostname",
 ] }
 sys-mount = { version = "3" }
-fuser = "0.14"
+fuser = "0.18"
 libc = "0.2"
 caps = "0.5.5"
 
